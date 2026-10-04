@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "target": "x86_64-unknown-linux-gnu",
+  "tauriCliVersion": "2.12.0",
+  "upstreamBundlerRevision": "447fa9f3f993fe77724189e355078b38ce20baea",
+  "tools": [
+    {
+      "file": "AppRun-x86_64",
+      "assetId": 274691722,
+      "url": "https://github.com/tauri-apps/binary-releases/releases/download/apprun-old/AppRun-x86_64",
+      "bytes": 31552,
+      "sha256": "f30140a43a0a59e46db21bdefdf749b9e9f2c6946e92afabbacf98b8ae73fb4f",
+      "mutation": "none"
+    },
+    {
+      "file": "linuxdeploy-07333c6-x86_64.AppImage",
+      "assetId": 576945544,
+      "url": "https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy-07333c6/linuxdeploy-x86_64.AppImage",
+      "bytes": 19810808,
+      "sha256": "36a2d7e274d12e1050d0e9ecfe11d339ed54720b2bec464c286d53f8b07f5c62",
+      "mutation": "zero-appimage-magic"
+    },
+    {
+      "file": "linuxdeploy-plugin-appimage.AppImage",
+      "assetId": 602435573,
+      "url": "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage",
+      "bytes": 16488952,
+      "sha256": "49d6a17160675a6bd1781699aae6bdf7692d98552e02a3671d2183d10547842e",
+      "mutation": "none"
+    }
+  ]
+}

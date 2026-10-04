@@ -5,6 +5,24 @@ keeps source validation separate from installed-product acceptance.
 
 ## Package validation: 3 October 2026
 
+[Native run 37157855255](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37157855255)
+passed Windows and Linux installer checks for corrected source
+`3b6251226b9e13705b23655de0a9b887fb087f8e` at merge checkout
+`303bd3d65a5c5a5e2a1da51221e691cdf8a81f0f`. The strict validated report digest is
+`ab9870ed313c4e0b731f4e3931cafafb3faaac482373dd8d4eda401dd903ec30`.
+Its host-file collector completed, considering 122,223 runtime paths and hashing
+10 ELF files with zero read failures. All 173 non-application AppImage ELF files
+remain without exact host matches; **collection success is not attribution**.
+No source, component or notice identity was assigned to those files.
+
+The subsequent build wrapper pins the three AppImage tool downloads and verifies
+a new isolated cache before and after packaging. Local tests cover tampering,
+unsafe redirects, bounded downloads, exact marker mutation, permissions and
+cleanup. Actual pinned downloads were verified on a Mac without execution; this
+is not native Linux wrapper or installer acceptance. That native result is pending.
+
+### Earlier host-reference parser diagnosis
+
 [Native run 37155075227](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37155075227)
 passed Windows and Linux installer checks for source
 `f4ad6755d1b8f20f19a9b7a40b7f4f8fac2efc07`, tested at merge checkout
@@ -20,7 +38,7 @@ That regression reproduced `database-encoding` on the native Ubuntu runner in
 before compilation. The parser now accepts valid UTF-8 filenames in the database
 while retaining ASCII package-identity and runtime-path allowlists. Malformed
 UTF-8, control characters and unsafe paths remain rejected or excluded. Native
-confirmation of the corrected full-database check and collector is pending.
+confirmation of the corrected full-database check and collector is recorded above.
 
 [Native run 37148286084](https://github.com/LockedinLabs-AI/LockedIn-Flow/actions/runs/37148286084)
 passed on Windows and Linux for source

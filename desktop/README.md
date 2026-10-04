@@ -86,6 +86,15 @@ replaces a mismatching model. A disconnected build can instead pre-stage the
 exact reviewed model at `app/resources/models/ggml-base.en.bin` and run
 `npm run verify:model`. No model download code is part of the application.
 
+Linux x64 builds also fetch the three exact AppImage tool inputs pinned in
+[`linux-packaging-tools.json`](linux-packaging-tools.json). The build verifies
+their size, SHA-256 and architecture in a fresh private cache, then rechecks them
+after packaging. It does not reuse or replace your existing Tauri tool cache.
+An unavailable or changed upstream asset fails the build without accepting an
+older fallback. This step requires build-time network access even with a
+pre-staged model; it does not add an installed-app network dependency. See
+[tool-input boundaries](SECURITY.md#appimage-build-tool-inputs).
+
 Packages appear under `desktop/target/release/bundle`. Test packages are
 unsigned: do not tell users to disable SmartScreen, Gatekeeper, or managed
 endpoint policy. Public downloads require the release gates below.

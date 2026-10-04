@@ -207,6 +207,35 @@ closure remain outside this check. Exit 2 records partial evidence, not acceptan
 exit 1 means no report was recorded. Exit 0 means payload inspection only, not
 license or release approval.
 
+### AppImage build-tool inputs
+
+The supported `npm run build` entry point pins the three x86-64 executables
+downloaded by [Tauri CLI 2.12.0's bundler](https://github.com/tauri-apps/tauri/blob/447fa9f3f993fe77724189e355078b38ce20baea/crates/tauri-bundler/src/bundle/linux/appimage/linuxdeploy.rs):
+AppRun, linuxdeploy and its AppImage output plugin. The manifest records exact
+upstream release-asset IDs, URLs, byte lengths and SHA-256 digests. Even though
+the plugin URL contains `continuous`, changed bytes cannot silently pass.
+Updating a pin requires reviewing the new input and native packaging results.
+
+Each Linux build uses a new private XDG cache rather than an existing user cache
+or local tools directory. Only bounded HTTPS downloads from GitHub and its
+allowlisted asset hosts are accepted, with redirect limits and a deadline.
+All three inputs must verify before the bundler starts; a failed download is
+not converted into an older plugin fallback. Tools are rechecked after the build
+and only that temporary cache is removed. The cache directories are owner-only;
+executable files retain mode 0755 because AppRun is copied into the package.
+
+The bundler zeroes bytes 8–10 of linuxdeploy's AppImage marker. The wrapper checks
+the original digest first, applies only that transformation, and verifies the
+resulting digest after packaging. It never treats arbitrary modified downloads
+as equivalent. AppRun and the output plugin must remain byte-for-byte unchanged.
+
+These checks pin particular build inputs, not the entire operating system or
+transitive build-tool execution. They do not establish publisher signatures,
+hermetic builds, AppRun/license provenance, or native library attribution.
+The installed CLI and its embedded GTK/GStreamer scripts remain governed by the
+npm lockfile. Calling the upstream CLI directly bypasses this wrapper and is not
+the supported release build path. Native validation of the new wrapper is pending.
+
 ### Exact host-file references
 
 The checker also collects a separate, optional `hostReferences` section for
