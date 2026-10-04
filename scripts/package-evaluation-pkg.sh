@@ -4,7 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUTPUT="${LOCKEDIN_EVALUATION_PKG_OUTPUT:-$ROOT/build/LockedIn-Flow-Community-evaluation-unsigned.pkg}"
+OUTPUT="${LOCKEDIN_EVALUATION_PKG_OUTPUT:-$ROOT/build/LockedIn-Flow-evaluation-unsigned.pkg}"
 SKIP_BUILD=0
 
 if [ "${1:-}" = "--skip-build" ]; then
@@ -24,10 +24,10 @@ case "$OUTPUT" in
 esac
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
-    "$ROOT/scripts/package-community-app.sh"
+    "$ROOT/scripts/package-app.sh"
 fi
 
-APP="$ROOT/build/LockedIn Flow Community.app"
+APP="$ROOT/build/LockedIn Flow.app"
 if [ ! -d "$APP" ]; then
     echo "ERROR: packaged app not found: $APP" >&2
     exit 1
@@ -49,13 +49,13 @@ trap cleanup EXIT
 
 PAYLOAD_ROOT="$WORK/root"
 mkdir -p "$PAYLOAD_ROOT/Applications" "$(dirname "$OUTPUT")"
-ditto --noextattr --norsrc "$APP" "$PAYLOAD_ROOT/Applications/LockedIn Flow Community.app"
+ditto --noextattr --norsrc "$APP" "$PAYLOAD_ROOT/Applications/LockedIn Flow.app"
 codesign --verify --deep --strict --verbose=2 \
-    "$PAYLOAD_ROOT/Applications/LockedIn Flow Community.app"
+    "$PAYLOAD_ROOT/Applications/LockedIn Flow.app"
 
 pkgbuild \
     --root "$PAYLOAD_ROOT" \
-    --component-plist "$ROOT/distribution/community-component.plist" \
+    --component-plist "$ROOT/distribution/app-component.plist" \
     --identifier "ai.lockedin.flow.community.pkg" \
     --version "$VERSION" \
     --install-location / \
@@ -70,7 +70,7 @@ if find "$EXPANDED" -type d -name Scripts -print -quit | grep -q .; then
 fi
 PAYLOAD_FILES="$WORK/payload-files"
 pkgutil --payload-files "$OUTPUT" > "$PAYLOAD_FILES"
-grep -Fq 'Applications/LockedIn Flow Community.app/Contents/MacOS/LockedInFlowCommunity' \
+grep -Fq 'Applications/LockedIn Flow.app/Contents/MacOS/LockedInFlow' \
     "$PAYLOAD_FILES"
 
 echo "Unsigned, no-script evaluation package: $OUTPUT"

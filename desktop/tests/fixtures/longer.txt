@@ -1,0 +1,1 @@
+Before we share this application with the team, verify that recording starts correctly and that the transcript appears only once. Switch to another application, return to the original editor, and check that the text is still available. If the connection is unavailable, local speech recognition should continue working.

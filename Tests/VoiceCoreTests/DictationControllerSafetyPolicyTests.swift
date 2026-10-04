@@ -97,7 +97,7 @@ final class DictationControllerSafetyPolicyTests: XCTestCase {
         XCTAssertTrue(source.contains("let targetSnapshot: InsertionTargetSnapshot"))
         XCTAssertTrue(
             source.contains(
-                "var focusLock: InsertionFocusLock? { targetSnapshot.focusLock }"
+                "var focusLock: InsertionFocusLock? { targetSnapshot?.focusLock }"
             )
         )
         XCTAssertFalse(
@@ -105,7 +105,7 @@ final class DictationControllerSafetyPolicyTests: XCTestCase {
         )
         XCTAssertTrue(
             source.contains(
-                "targetSnapshot: targetSnapshot,\n            captureWasInterrupted: capture.wasInterrupted"
+                "targetSnapshot: targetSnapshot,\n            localProfile: state.effectiveProfile,\n            deliveryMode: captureDeliveryMode,\n            captureWasInterrupted: capture.wasInterrupted"
             )
         )
 
@@ -120,6 +120,9 @@ final class DictationControllerSafetyPolicyTests: XCTestCase {
         XCTAssertFalse(recordingPath.contains("prepareTargetForOrdinaryCapture"))
         XCTAssertFalse(recordingPath.contains("CapturedInsertionTarget"))
         XCTAssertTrue(recordingPath.contains("isExplicitSecureFieldFocused"))
+        XCTAssertTrue(recordingPath.contains("if deliveryMode.requiresAccessibility,"))
+        XCTAssertTrue(recordingPath.contains("guard state.deliveryMode == deliveryMode else"))
+        XCTAssertFalse(recordingPath.contains("isTrusted(prompt: true)"))
 
         let insertionStart = try XCTUnwrap(
             source.range(of: "private func completeInsertion(")

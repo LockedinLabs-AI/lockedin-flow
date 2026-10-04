@@ -33,20 +33,25 @@ flowchart LR
 ## Dictation sequence
 
 1. An explicit shortcut or microphone control begins a capture attempt.
-2. Microphone and Accessibility permission checks run before capture. No
-   concrete Accessibility field is retained across recording.
+2. Microphone permission is required. The default in-app mode needs no
+   Accessibility access. Automatic insertion is an explicit opt-in with a
+   separate, clearly explained permission request from the correctly named app
+   bundle. Recording never raises an Accessibility prompt.
 3. Audio is converted to 16 kHz mono samples in memory.
 4. Optional on-device voice activity detection trims only leading and trailing
    non-speech. Detector failure falls back to the original samples.
 5. A local Parakeet model transcribes the samples.
 6. Deterministic cleanup runs. On supported systems, the user can explicitly
    enable an Apple on-device contextual pass; it is off by default.
-7. When recording ends, the current destination application identity and
-   activation generation are frozen. The concrete text field is not.
+7. The delivery mode is frozen when capture begins and retained for retries.
+   In-app mode displays the transcript without inspecting a destination,
+   executing cross-app spoken commands, or automatically writing the clipboard.
+   In automatic-insertion mode, recording end freezes the destination application
+   identity and activation generation, but not a concrete text field.
 8. Recovery text follows the configured retention policy after a completed
    delivery attempt: memory-only by default, or encrypted locally when the user
    opts into persistence.
-9. At delivery, `InsertionEngine` resolves the currently focused editable field
+9. For automatic insertion only, `InsertionEngine` resolves the currently focused editable field
    in the frozen application, refuses secure fields, and uses an Accessibility
    write or a verified pasteboard transaction.
 10. A delivery is reported successful only when the post-write evidence matches

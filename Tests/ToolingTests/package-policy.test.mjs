@@ -9,6 +9,22 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const packageJSON = JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
 const packageLock = JSON.parse(readFileSync(path.join(repositoryRoot, "package-lock.json"), "utf8"));
 
+test("product display names use LockedIn Flow without an edition suffix", () => {
+  const infoPlist = readFileSync(path.join(repositoryRoot, "Info.plist"), "utf8");
+  for (const key of ["CFBundleName", "CFBundleDisplayName"]) {
+    const value = infoPlist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`))?.[1];
+    assert.equal(value, "LockedIn Flow");
+  }
+  for (const file of ["README.md", "Sources/LockedInFlowApp/MenuBarView.swift", "Sources/LockedInFlowApp/SettingsView.swift"]) {
+    const text = readFileSync(path.join(repositoryRoot, file), "utf8");
+    assert.doesNotMatch(text, /LockedIn Flow Community|Community edition|Text\("Community"\)/);
+  }
+  // Storage identity is compatibility state, not a product edition.
+  const identity = readFileSync(path.join(repositoryRoot, "Sources/VoiceCore/AppPaths.swift"), "utf8");
+  assert.match(identity, /supportDirectoryName = "LockedInFlowCommunity"/);
+  assert.match(identity, /keychainService = "ai\.lockedin\.flow\.community"/);
+});
+
 test("release and repository metadata stay aligned", () => {
   const infoPlist = readFileSync(path.join(repositoryRoot, "Info.plist"), "utf8");
   const version = infoPlist.match(
@@ -22,13 +38,13 @@ test("release and repository metadata stay aligned", () => {
   assert.equal(packageLock.version, version);
   assert.equal(packageLock.packages[""].version, version);
   assert.match(provisioner, new RegExp(`LockedIn-Flow-Provisioner/${version}`));
-  assert.equal(packageJSON.repository.url, "git+https://github.com/LockedinLabs-AI/lockedin-flow-community.git");
-  assert.equal(packageJSON.homepage, "https://github.com/LockedinLabs-AI/lockedin-flow-community#readme");
+  assert.equal(packageJSON.repository.url, "git+https://github.com/LockedinLabs-AI/lockedin-flow.git");
+  assert.equal(packageJSON.homepage, "https://github.com/LockedinLabs-AI/lockedin-flow#readme");
   assert.equal(packageJSON.license, "MIT");
   assert.equal(packageLock.packages[""].license, "MIT");
   for (const document of ["README.md", "docs/getting-started.md"]) {
     const text = readFileSync(path.join(repositoryRoot, document), "utf8");
-    assert.match(text, /git clone https:\/\/github\.com\/LockedinLabs-AI\/lockedin-flow-community\.git\ncd lockedin-flow-community\n/);
+    assert.match(text, /git clone https:\/\/github\.com\/LockedinLabs-AI\/lockedin-flow\.git\ncd lockedin-flow\n/);
   }
 });
 
@@ -65,7 +81,7 @@ test("npm developer tooling is a single zero-dependency package with no lifecycl
 
 test("local installer exposes help without building or changing the machine", () => {
   const script = readFileSync(
-    path.join(repositoryRoot, "scripts", "install-community-app.sh"),
+    path.join(repositoryRoot, "scripts", "install-app.sh"),
     "utf8",
   );
   assert.match(script, /--replace/);
@@ -74,9 +90,9 @@ test("local installer exposes help without building or changing the machine", ()
   assert.doesNotMatch(script, /sudo/);
 });
 
-test("the Community bundle includes the project MIT license", () => {
+test("the LockedIn Flow bundle includes the project MIT license", () => {
   const packagingScript = readFileSync(
-    path.join(repositoryRoot, "scripts", "package-community-app.sh"),
+    path.join(repositoryRoot, "scripts", "package-app.sh"),
     "utf8",
   );
   assert.match(packagingScript, /LockedIn-Flow-MIT\.txt/);

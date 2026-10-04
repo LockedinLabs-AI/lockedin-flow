@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://raw.githubusercontent.com/LockedinLabs-AI/lockedin-flow-community/main/security/sbom-profile.schema.json",
+  "$id": "https://raw.githubusercontent.com/LockedinLabs-AI/lockedin-flow/main/security/sbom-profile.schema.json",
   "title": "LockedIn Flow CycloneDX 1.6 build SBOM profile",
   "$comment": "Strict local profile for build evidence and GitHub SBOM attestations. It is intentionally narrower than, and does not replace, the official CycloneDX 1.6 schema referenced by each generated document.",
   "type": "object",

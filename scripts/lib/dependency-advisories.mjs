@@ -30,6 +30,17 @@ export function dependencyQueries(resolved, inventory, profile) {
 
 export async function queryAdvisories(commit, fetcher = fetch) {
   if (!/^[a-f0-9]{40}$/.test(commit)) throw new Error("Invalid commit.");
+  return queryIdentity({ commit }, fetcher);
+}
+
+export async function queryCrateAdvisories(name, version, fetcher = fetch) {
+  if (!/^[a-z0-9_-]{1,64}$/.test(name) || !/^\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/.test(version)) {
+    throw new Error("Invalid public crate identity.");
+  }
+  return queryIdentity({ package: { ecosystem: "crates.io", name }, version }, fetcher);
+}
+
+async function queryIdentity(identity, fetcher) {
   const ids = new Set();
   const pages = new Set();
   let page;
@@ -37,7 +48,7 @@ export async function queryAdvisories(commit, fetcher = fetch) {
     const response = await fetcher("https://api.osv.dev/v1/query", {
       method: "POST", redirect: "error", signal: AbortSignal.timeout(30000),
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ commit, ...(page ? { page_token: page } : {}) }),
+      body: JSON.stringify({ ...identity, ...(page ? { page_token: page } : {}) }),
     });
     if (!response.ok) throw new Error("Advisory service unavailable.");
     const result = await response.json();

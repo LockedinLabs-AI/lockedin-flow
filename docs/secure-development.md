@@ -2,7 +2,7 @@
 
 LockedIn Flow uses AI-assisted implementation and review with explicit release
 controls. This document describes the process and evidence used for the public
-Community source. It does not claim a retrospective audit of every development
+LockedIn Flow source. It does not claim a retrospective audit of every development
 session or certification of the engineering organization.
 
 ## Lifecycle and evidence

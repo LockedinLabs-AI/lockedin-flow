@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>LockedIn Flow Community</string>
+    <string>LockedIn Flow</string>
     <key>CFBundleDisplayName</key>
-    <string>LockedIn Flow Community</string>
+    <string>LockedIn Flow</string>
     <key>CFBundleIdentifier</key>
     <string>ai.lockedin.flow.community</string>
     <key>CFBundleVersion</key>
@@ -13,7 +13,7 @@
     <key>CFBundleShortVersionString</key>
     <string>0.4.17</string>
     <key>CFBundleExecutable</key>
-    <string>LockedInFlowCommunity</string>
+    <string>LockedInFlow</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleIconFile</key>

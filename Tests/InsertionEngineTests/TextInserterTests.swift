@@ -420,6 +420,29 @@ final class TextInserterTests: XCTestCase {
         XCTAssertEqual(environment.pasteAttempts, 0)
     }
 
+    func testMissingFieldDoesNotBlockCaptureButStillRefusesDeliveryPreflight() {
+        let environment = TestInsertionEnvironment(
+            bundleID: "com.apple.TextEdit",
+            appName: "TextEdit",
+            focusedElementAvailable: false
+        )
+        let inserter = TextInserter(environment: environment)
+        let lock = InsertionFocusLock(
+            processIdentifier: 42,
+            bundleIdentifier: "com.apple.TextEdit",
+            appName: "TextEdit"
+        )!
+
+        // A renderer may temporarily publish no focused control. This must not
+        // prevent local recording or authorize delivery to an unknown target.
+        XCTAssertFalse(inserter.isExplicitSecureFieldFocused(for: lock))
+        XCTAssertThrowsError(try inserter.preflight(lock)) { error in
+            XCTAssertEqual(error as? InsertionError, .insertionRejected)
+        }
+        XCTAssertEqual(environment.axInsertionAttempts, 0)
+        XCTAssertEqual(environment.pasteAttempts, 0)
+    }
+
     func testCaptureTargetRejectsMissingFocusedControl() {
         let environment = TestInsertionEnvironment(
             bundleID: "com.apple.TextEdit",

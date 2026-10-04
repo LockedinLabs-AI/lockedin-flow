@@ -1,7 +1,19 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { localLinks, scanEntry, scanText, stripPngMetadata } from "../../scripts/lib/public-content-policy.mjs";
+
+test("upstream notice contacts require both the exact file and pinned bytes", () => {
+  const bytes = readFileSync(new URL("../../desktop/notices/supplemental.json", import.meta.url));
+  const file = "desktop/notices/supplemental.json";
+  assert.deepEqual(scanEntry(file, bytes), []);
+  assert.ok(scanEntry("docs/supplemental.json", bytes).includes("unreviewed-contact-address"));
+  assert.ok(scanEntry(file, Buffer.concat([bytes, Buffer.from("\n")])).includes("unreviewed-contact-address"));
+  const contact = Buffer.from(["synthetic", "unreviewed.test"].join("@"));
+  assert.ok(scanEntry(file, contact).includes("unreviewed-contact-address"));
+  assert.ok(scanEntry(file, bytes, { mode: "120000" }).includes("nonregular-git-entry"));
+});
 
 test("publication policy rejects private surfaces without returning their contents", () => {
   const bytes = Buffer.from("synthetic sensitive payload");
@@ -26,6 +38,14 @@ test("publication policy catches personal context and conversation exports", () 
   assert.ok(scanText(transcript).includes("conversation-export"));
 });
 
+test("the reviewed compiler fixture remains subject to text privacy checks", () => {
+  const file = "desktop/tests/fixtures/path-privacy.cpp";
+  assert.deepEqual(scanEntry(file, Buffer.from("const char *synthetic = __FILE__;")), []);
+  const home = ["", "Users", "synthetic-person", "private.txt"].join("/");
+  assert.ok(scanEntry(file, Buffer.from(home)).includes("personal-home-path"));
+  assert.ok(scanEntry("desktop/tests/fixtures/unreviewed.cpp", Buffer.from("synthetic")).includes("unapproved-file-type"));
+});
+
 test("GitHub's public commit identity is allowed only in commit metadata", () => {
   for (const name of ["noreply", "support"]) {
     const address = [name, "github.com"].join("@");
@@ -34,6 +54,14 @@ test("GitHub's public commit identity is allowed only in commit metadata", () =>
   }
   assert.ok(scanText(["synthetic", "unreviewed.test"].join("@"), { commitMetadata: true })
     .includes("unreviewed-contact-address"));
+});
+
+test("the reviewed installer fragment still rejects private content", () => {
+  const file = "desktop/app/windows/install-directory.wxs";
+  assert.deepEqual(scanEntry(file, Buffer.from('<Wix><Fragment /></Wix>')), []);
+  const home = ["", "Users", "synthetic-person", "private.txt"].join("/");
+  assert.ok(scanEntry(file, Buffer.from(home)).includes("personal-home-path"));
+  assert.ok(scanEntry("desktop/app/windows/unreviewed.wxs", Buffer.from("synthetic")).includes("unapproved-file-type"));
 });
 
 test("publication media requires exact reviewed bytes and rejects embedded metadata", () => {
@@ -54,4 +82,6 @@ test("publication media requires exact reviewed bytes and rejects embedded metad
 test("documentation links resolve relative paths and ignore external services", () => {
   assert.deepEqual(localLinks("docs/start.md", "[Guide](../README.md#start) [Web](https://example.com)"), ["README.md"]);
   assert.deepEqual(localLinks("README.md", '<img src="docs/images/example.png">'), ["docs/images/example.png"]);
+  assert.deepEqual(localLinks("desktop/vendor/glib/README.md", "[Variant](struct@Variant)"), []);
+  assert.deepEqual(localLinks("README.md", "[Variant](struct@Variant)"), ["struct@Variant"]);
 });

@@ -5,6 +5,10 @@ user impact, and include evidence appropriate to the risk.
 
 ## Before opening a pull request
 
+Use a public fork for contribution branches. Upstream branch creation is
+restricted to approved automation, and existing upstream branches reject force
+pushes. Never push a private development checkout or private Git history here.
+
 1. Open an issue for a material feature or behavior change so the security and
    compatibility boundary can be discussed first.
 2. Use synthetic examples only. Never include credentials, personal data,
@@ -18,7 +22,7 @@ user impact, and include evidence appropriate to the risk.
    npm test
    npm run check:public
    swift build --force-resolved-versions
-   swift build -c release --product lockedin-flow-community --force-resolved-versions
+   swift build -c release --product lockedin-flow --force-resolved-versions
    swift test --force-resolved-versions
    scripts/test-sbom.sh
    scripts/test-production-binary-policy.sh

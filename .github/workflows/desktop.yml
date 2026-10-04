@@ -1,0 +1,209 @@
+name: Desktop installers
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    name: Native ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: desktop
+        shell: bash
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_TERM_COLOR: never
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+      - name: Install Linux build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev libssl-dev librsvg2-dev libxdo-dev libfuse2 libxkbcommon-dev build-essential clang cmake ninja-build pkg-config patchelf dpkg rpm espeak sox xvfb xauth xdotool dbus-x11 squashfs-tools
+      - name: Verify pinned toolchain
+        run: |
+          rustup toolchain install 1.94.1 --profile minimal --component rustfmt --component clippy
+          rustc --version
+          cmake --version
+          clang --version
+      - name: Select Windows native compiler
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          clang-cl --version
+          ninja --version
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value 'CC=clang-cl'
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value 'CXX=clang-cl'
+          Add-Content -LiteralPath $env:GITHUB_ENV -Value 'CMAKE_GENERATOR=Ninja'
+      - name: Verify native source-path remapping before compilation
+        run: node scripts/verify-native-path-remapping.mjs
+      - name: Restore locked developer tools without install hooks
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Source policy and reviewed Linux backport
+        run: |
+          npm test
+          npm run verify:backport
+          node ../scripts/check-public-content.mjs
+          npm audit --audit-level=low
+      - name: Prepare verified installer resources
+        run: |
+          npm run icons
+          npm run provision:model
+          npm run inventory
+      - name: Format, type, lint, and unit gates
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
+          cargo test --workspace --all-targets --locked
+          cargo build --locked -p lockedin-flow-engine --example recognize_fixture
+      - name: Optimized Linux security regression
+        if: runner.os == 'Linux'
+        run: cargo test --release --locked -p lockedin-flow-desktop --test glib_backport
+      - name: Rust advisory gate
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --deny unsound
+      - name: Linux synthetic speech with network denied
+        if: runner.os == 'Linux'
+        run: |
+          mkdir -p target/synthetic
+          espeak -s 145 -w target/synthetic/source.wav -f tests/fixtures/smoke.txt
+          sox target/synthetic/source.wav -r 16000 -c 1 -b 16 target/synthetic/input.wav
+          sudo unshare --net -- target/debug/examples/recognize_fixture app/resources/models/ggml-base.en.bin target/synthetic/input.wav tests/fixtures/smoke.txt
+      - name: Windows synthetic speech with network denied
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force target/synthetic | Out-Null
+          Add-Type -AssemblyName System.Speech
+          $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer
+          $format = New-Object System.Speech.AudioFormat.SpeechAudioFormatInfo(16000, [System.Speech.AudioFormat.AudioBitsPerSample]::Sixteen, [System.Speech.AudioFormat.AudioChannel]::Mono)
+          $voice.SetOutputToWaveFile((Join-Path $PWD 'target/synthetic/input.wav'), $format)
+          $voice.Speak([IO.File]::ReadAllText((Join-Path $PWD 'tests/fixtures/smoke.txt')))
+          $voice.Dispose()
+          $executable = (Resolve-Path 'target/debug/examples/recognize_fixture.exe').Path
+          # The firewall on this ephemeral runner must enforce the per-executable rule.
+          Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True
+          if ((Get-NetFirewallProfile | Where-Object { -not $_.Enabled }).Count -ne 0) { throw 'Network-denial policy is not active.' }
+          $rule = New-NetFirewallRule -DisplayName 'LockedIn Flow CI offline speech' -Direction Outbound -Program $executable -Action Block
+          try {
+            & $executable app/resources/models/ggml-base.en.bin target/synthetic/input.wav tests/fixtures/smoke.txt
+            if ($LASTEXITCODE -ne 0) { throw 'Offline speech test failed.' }
+          } finally { $rule | Remove-NetFirewallRule }
+      - name: Build Windows standard installers
+        if: runner.os == 'Windows'
+        run: npm run build -- --ci --bundles nsis,msi
+      - name: Build Linux standard packages
+        if: runner.os == 'Linux'
+        run: npm run build -- --ci --bundles deb,rpm,appimage
+      - name: Verify native artifact provenance and build-path privacy
+        run: node scripts/verify-artifact.mjs
+      - name: Collect Linux inspection evidence (not acceptance)
+        id: linux_evidence
+        if: runner.os == 'Linux'
+        run: |
+          printf 'started_at=%s\n' "$(date +%s)" >> "$GITHUB_OUTPUT"
+          inspector_exit=1
+          if [[ ! -e target/release/bundle/LINUX-PACKAGE-EVIDENCE.json && ! -L target/release/bundle/LINUX-PACKAGE-EVIDENCE.json && ! -e target/release/bundle/LINUX-PACKAGE-EVIDENCE.review.json && ! -L target/release/bundle/LINUX-PACKAGE-EVIDENCE.review.json ]]; then
+            if node scripts/verify-linux-packages.mjs; then
+              inspector_exit=0
+            else
+              inspector_exit=$?
+            fi
+          fi
+          case "$inspector_exit" in
+            0|2) ;;
+            *) inspector_exit=1 ;;
+          esac
+          printf 'exit_code=%s\n' "$inspector_exit" >> "$GITHUB_OUTPUT"
+      - name: Verify Windows offline runtime input identity and signatures
+        if: runner.os == 'Windows'
+        run: node scripts/verify-windows-prerequisites.mjs
+      - name: Check Linux packaged payload
+        if: runner.os == 'Linux'
+        run: |
+          dpkg-deb --contents target/release/bundle/deb/*.deb > target/deb-contents.txt
+          grep -F 'models/ggml-base.en.bin' target/deb-contents.txt
+          grep -F 'compliance/SBOM.cdx.json' target/deb-contents.txt
+          grep -F 'compliance/THIRD-PARTY-NOTICES.txt' target/deb-contents.txt
+          test -n "$(find target/release/bundle/rpm -name '*.rpm' -print -quit)"
+          test -n "$(find target/release/bundle/appimage -name '*.AppImage' -print -quit)"
+          git diff --exit-code -- Cargo.lock package-lock.json
+      - name: Install and remove Linux package in ephemeral runner
+        if: runner.os == 'Linux'
+        run: bash scripts/test-linux-package.sh
+      - name: Check Windows installer and uninstaller in ephemeral runner
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./scripts/test-windows-installers.ps1
+      - name: Validate fixed Linux report immediately before retention
+        id: linux_review_json
+        if: ${{ !cancelled() && runner.os == 'Linux' && (steps.linux_evidence.outputs.exit_code == '0' || steps.linux_evidence.outputs.exit_code == '2') }}
+        env:
+          FLOW_INSPECTOR_EXIT: ${{ steps.linux_evidence.outputs.exit_code }}
+          FLOW_INSPECTION_STARTED_AT: ${{ steps.linux_evidence.outputs.started_at }}
+          FLOW_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
+        run: node scripts/validate-linux-evidence.mjs
+      - name: Retain sanitized Linux JSON only (not binaries or approval)
+        id: linux_review_upload
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.linux_review_json.outcome == 'success' }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: LockedIn-Flow-linux-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: desktop/target/release/bundle/LINUX-PACKAGE-EVIDENCE.review.json
+          if-no-files-found: error
+          include-hidden-files: false
+          overwrite: false
+          retention-days: 7
+      - name: Enforce Linux payload acceptance after evidence retention
+        if: ${{ !cancelled() && runner.os == 'Linux' && steps.linux_evidence.outputs.exit_code != '' }}
+        env:
+          FLOW_INSPECTOR_EXIT: ${{ steps.linux_evidence.outputs.exit_code }}
+          FLOW_REVIEW_VALIDATION: ${{ steps.linux_review_json.outcome }}
+          FLOW_REVIEW_UPLOAD: ${{ steps.linux_review_upload.outcome }}
+        run: |
+          if [[ "$FLOW_INSPECTOR_EXIT" == 0 && "$FLOW_REVIEW_VALIDATION" == success && "$FLOW_REVIEW_UPLOAD" == success ]]; then
+            exit 0
+          fi
+          if [[ "$FLOW_INSPECTOR_EXIT" == 2 ]]; then
+            echo "::error::Linux payload inspection remains incomplete. Retaining a review report is not acceptance."
+          else
+            echo "::error::Linux evidence collection or validated retention failed. No acceptance is recorded."
+          fi
+          exit 1
+      - name: Upload protected-main evaluation installers only
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: LockedIn-Flow-evaluation-${{ matrix.os }}-${{ github.sha }}
+          path: |
+            desktop/target/release/bundle/nsis/*-setup.exe
+            desktop/target/release/bundle/msi/*.msi
+            desktop/target/release/bundle/deb/*.deb
+            desktop/target/release/bundle/rpm/*.rpm
+            desktop/target/release/bundle/appimage/*.AppImage
+            desktop/target/release/bundle/WINDOWS-PACKAGING-INPUTS.json
+            desktop/app/resources/compliance/*
+          if-no-files-found: error
+          retention-days: 7

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LockedIn Flow",
+  "version": "0.5.0-alpha.1",
+  "identifier": "ai.lockedin.flow.desktop",
+  "build": { "frontendDist": "../ui" },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "title": "LockedIn Flow",
+        "width": 1000,
+        "height": 760,
+        "minWidth": 520,
+        "minHeight": 560,
+        "backgroundColor": "#0c1520",
+        "devtools": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src ipc: http://ipc.localhost; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'",
+      "capabilities": ["dictation"]
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "msi", "deb", "rpm", "appimage"],
+    "publisher": "LockedIn Labs",
+    "copyright": "Copyright © 2026 LockedIn Labs. MIT licensed.",
+    "category": "Productivity",
+    "shortDescription": "Offline dictation for your development workspace.",
+    "longDescription": "Transcribe speech locally, review your words, then copy them to your editor or agent. No account or external speech service.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "resources": {
+      "resources/models/ggml-base.en.bin": "models/ggml-base.en.bin",
+      "resources/compliance/": "compliance/"
+    },
+    "macOS": { "minimumSystemVersion": "13.0", "infoPlist": "Info.plist" },
+    "windows": {
+      "allowDowngrades": false,
+      "wix": {
+        "version": "0.5.0.1",
+        "upgradeCode": "c010de70-43e8-51b6-a898-a970f9133c31",
+        "fragmentPaths": ["windows/install-directory.wxs"],
+        "componentGroupRefs": ["LockedInInstallDirectoryPolicy"]
+      },
+      "webviewInstallMode": { "type": "offlineInstaller", "silent": true },
+      "nsis": { "installMode": "currentUser", "displayLanguageSelector": false }
+    },
+    "linux": {
+      "deb": { "depends": ["libasound2", "libwebkit2gtk-4.1-0", "libgtk-3-0"] },
+      "rpm": { "depends": ["alsa-lib", "webkit2gtk4.1", "gtk3"] },
+      "appimage": { "bundleMediaFramework": false }
+    }
+  }
+}

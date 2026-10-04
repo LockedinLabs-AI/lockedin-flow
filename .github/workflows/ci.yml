@@ -44,9 +44,9 @@ jobs:
       - name: Debug build and type check
         run: swift build --force-resolved-versions
       - name: Release build
-        run: swift build -c release --product lockedin-flow-community --force-resolved-versions
+        run: swift build -c release --product lockedin-flow --force-resolved-versions
       - name: Release binary diagnostic gate
-        run: scripts/verify-production-binary.sh "$(swift build -c release --show-bin-path)/lockedin-flow-community"
+        run: scripts/verify-production-binary.sh "$(swift build -c release --show-bin-path)/lockedin-flow"
       - name: Unit and policy tests
         run: |
           swift test --force-resolved-versions
@@ -57,9 +57,9 @@ jobs:
         run: |
           /bin/bash -n \
             scripts/generate-sbom.sh \
-            scripts/install-community-app.sh \
+            scripts/install-app.sh \
             scripts/lib/macos-acl.sh \
-            scripts/package-community-app.sh \
+            scripts/package-app.sh \
             scripts/package-evaluation-pkg.sh \
             scripts/selftest.sh \
             scripts/soak.sh \
@@ -72,45 +72,45 @@ jobs:
             scripts/verify-production-binary.sh
       - name: Package local evaluation bundle
         run: |
-          scripts/package-community-app.sh
+          scripts/package-app.sh
           scripts/package-evaluation-pkg.sh --skip-build
       - name: Verify packaged artifact
         run: |
-          test -f "build/LockedIn Flow Community.app/Contents/Resources/SBOM.cdx.json"
-          test -f "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Eq '^model-artifacts-sha256: [0-9a-f]{64}$' "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Eq '^model-sources-sha256: [0-9a-f]{64}$' "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Fqx 'source-state: clean' "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Fqx "source-revision: ${GITHUB_SHA}" "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Fqx "package-resolved-sha256: $(shasum -a 256 Package.resolved | awk '{print $1}')" "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Fqx "sbom-sha256: $(shasum -a 256 'build/LockedIn Flow Community.app/Contents/Resources/SBOM.cdx.json' | awk '{print $1}')" "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Fqx "model-artifacts-sha256: $(shasum -a 256 security/model-artifacts.tsv | awk '{print $1}')" "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
-          grep -Fqx "model-sources-sha256: $(shasum -a 256 security/model-sources.tsv | awk '{print $1}')" "build/LockedIn Flow Community.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          test -f "build/LockedIn Flow.app/Contents/Resources/SBOM.cdx.json"
+          test -f "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Eq '^model-artifacts-sha256: [0-9a-f]{64}$' "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Eq '^model-sources-sha256: [0-9a-f]{64}$' "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Fqx 'source-state: clean' "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Fqx "source-revision: ${GITHUB_SHA}" "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Fqx "package-resolved-sha256: $(shasum -a 256 Package.resolved | awk '{print $1}')" "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Fqx "sbom-sha256: $(shasum -a 256 'build/LockedIn Flow.app/Contents/Resources/SBOM.cdx.json' | awk '{print $1}')" "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Fqx "model-artifacts-sha256: $(shasum -a 256 security/model-artifacts.tsv | awk '{print $1}')" "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
+          grep -Fqx "model-sources-sha256: $(shasum -a 256 security/model-sources.tsv | awk '{print $1}')" "build/LockedIn Flow.app/Contents/Resources/BUILD-PROVENANCE.txt"
           test -z "$(git status --porcelain --untracked-files=all)"
-          scripts/validate-sbom.sh "build/LockedIn Flow Community.app/Contents/Resources/SBOM.cdx.json"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' 'build/LockedIn Flow Community.app/Contents/Info.plist')" = "ai.lockedin.flow.community"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' 'build/LockedIn Flow Community.app/Contents/Info.plist')" = "LockedIn Flow Community"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' 'build/LockedIn Flow Community.app/Contents/Info.plist')" = "LockedInFlowCommunity"
-          test "$(/usr/libexec/PlistBuddy -c 'Print :LockedInReleaseStage' 'build/LockedIn Flow Community.app/Contents/Info.plist')" = "release-candidate"
-          ! find "build/LockedIn Flow Community.app/Contents" -iname '*Sparkle*' -print -quit | grep -q .
-          ! otool -L "build/LockedIn Flow Community.app/Contents/MacOS/LockedInFlowCommunity" | grep -q Sparkle
-          jq -e '.metadata.component.name == "LockedIn Flow Community" and (.metadata.component.properties | any(.name == "com.lockedinflow.app.bundle-identifier" and .value == "ai.lockedin.flow.community"))' "build/LockedIn Flow Community.app/Contents/Resources/SBOM.cdx.json"
-          codesign --verify --deep --strict --verbose=2 "build/LockedIn Flow Community.app"
-          test -f "build/LockedIn-Flow-Community-evaluation-unsigned.pkg"
-          pkgutil --payload-files "build/LockedIn-Flow-Community-evaluation-unsigned.pkg" | grep -Fq 'Applications/LockedIn Flow Community.app/Contents/MacOS/LockedInFlowCommunity'
-          ditto -c -k --keepParent --noextattr --norsrc "build/LockedIn Flow Community.app" "build/LockedIn-Flow-Community-unsigned.zip"
-          unzip -t "build/LockedIn-Flow-Community-unsigned.zip"
-          cp "build/LockedIn Flow Community.app/Contents/Resources/SBOM.cdx.json" \
-            "build/LockedIn-Flow-Community-SBOM.cdx.json"
+          scripts/validate-sbom.sh "build/LockedIn Flow.app/Contents/Resources/SBOM.cdx.json"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' 'build/LockedIn Flow.app/Contents/Info.plist')" = "ai.lockedin.flow.community"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleDisplayName' 'build/LockedIn Flow.app/Contents/Info.plist')" = "LockedIn Flow"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' 'build/LockedIn Flow.app/Contents/Info.plist')" = "LockedInFlow"
+          test "$(/usr/libexec/PlistBuddy -c 'Print :LockedInReleaseStage' 'build/LockedIn Flow.app/Contents/Info.plist')" = "release-candidate"
+          ! find "build/LockedIn Flow.app/Contents" -iname '*Sparkle*' -print -quit | grep -q .
+          ! otool -L "build/LockedIn Flow.app/Contents/MacOS/LockedInFlow" | grep -q Sparkle
+          jq -e '.metadata.component.name == "LockedIn Flow" and (.metadata.component.properties | any(.name == "com.lockedinflow.app.bundle-identifier" and .value == "ai.lockedin.flow.community"))' "build/LockedIn Flow.app/Contents/Resources/SBOM.cdx.json"
+          codesign --verify --deep --strict --verbose=2 "build/LockedIn Flow.app"
+          test -f "build/LockedIn-Flow-evaluation-unsigned.pkg"
+          pkgutil --payload-files "build/LockedIn-Flow-evaluation-unsigned.pkg" | grep -Fq 'Applications/LockedIn Flow.app/Contents/MacOS/LockedInFlow'
+          ditto -c -k --keepParent --noextattr --norsrc "build/LockedIn Flow.app" "build/LockedIn-Flow-unsigned.zip"
+          unzip -t "build/LockedIn-Flow-unsigned.zip"
+          cp "build/LockedIn Flow.app/Contents/Resources/SBOM.cdx.json" \
+            "build/LockedIn-Flow-SBOM.cdx.json"
       - name: Upload protected-main evaluation artifact
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: LockedIn-Flow-Community-unsigned-${{ github.sha }}
+          name: LockedIn-Flow-unsigned-${{ github.sha }}
           path: |
-            build/LockedIn-Flow-Community-unsigned.zip
-            build/LockedIn-Flow-Community-evaluation-unsigned.pkg
-            build/LockedIn-Flow-Community-SBOM.cdx.json
+            build/LockedIn-Flow-unsigned.zip
+            build/LockedIn-Flow-evaluation-unsigned.pkg
+            build/LockedIn-Flow-SBOM.cdx.json
           retention-days: 7
 
   attest-public-evaluation:
@@ -125,18 +125,18 @@ jobs:
     steps:
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          name: LockedIn-Flow-Community-unsigned-${{ github.sha }}
+          name: LockedIn-Flow-unsigned-${{ github.sha }}
           path: build
       - name: Attest build provenance
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
-          subject-path: build/LockedIn-Flow-Community-unsigned.zip
+          subject-path: build/LockedIn-Flow-unsigned.zip
       - name: Attest evaluation package provenance
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
-          subject-path: build/LockedIn-Flow-Community-evaluation-unsigned.pkg
+          subject-path: build/LockedIn-Flow-evaluation-unsigned.pkg
       - name: Attest packaged SBOM
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
-          subject-path: build/LockedIn-Flow-Community-unsigned.zip
-          sbom-path: build/LockedIn-Flow-Community-SBOM.cdx.json
+          subject-path: build/LockedIn-Flow-unsigned.zip
+          sbom-path: build/LockedIn-Flow-SBOM.cdx.json

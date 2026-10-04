@@ -136,7 +136,7 @@ struct SettingsView: View {
                 }
                 Text(
                     state.activationMode == .hold
-                        ? "Hold the key, speak, release. Text is inserted at your cursor."
+                        ? "Hold the key, speak, release. Your transcript follows the output mode in Permissions."
                         : "Press once to start; press again — or pause — to stop. Stops automatically after the silence window above."
                 )
                 .font(.caption)
@@ -186,7 +186,11 @@ struct SettingsView: View {
                         set: { state.setProfileOverrideID($0) }
                     )
                 ) {
-                    Text("Auto (follows frontmost app)").tag(String?.none)
+                    Text(
+                        state.automaticInsertionEnabled
+                            ? "Auto (follows frontmost app)" : "General (in-app transcription)"
+                    )
+                    .tag(String?.none)
                     ForEach(state.availableProfiles) { profile in
                         Text(profile.name).tag(String?.some(profile.id))
                     }
@@ -209,10 +213,13 @@ struct SettingsView: View {
                 }
             }
             Section("Clipboard") {
-                Toggle("Auto-copy every dictation to the clipboard", isOn: $state.autoCopyEnabled)
-                    .disabled(!state.canChangeTranscriptPolicy)
+                Toggle(
+                    "Keep automatically inserted text on the clipboard",
+                    isOn: $state.autoCopyEnabled
+                )
+                .disabled(!state.canChangeTranscriptPolicy || !state.automaticInsertionEnabled)
                 Text(
-                    "Off by default. Recoverable non-sensitive insertion failures remain in local History/Recovery for an explicit retry or copy and do not replace your clipboard. Secure or unverifiable targets are discarded. Some apps require a temporary verified paste; LockedIn Flow restores the prior clipboard only while it still owns that transaction."
+                    "Off by default and used only with automatic typing. In-app transcription never automatically changes the clipboard. Some destination apps require a temporary verified paste; LockedIn Flow restores the prior clipboard only while it still owns that transaction."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -287,10 +294,10 @@ struct SettingsView: View {
                     "View source releases…",
                     destination: URL(
                         string:
-                            "https://github.com/LockedinLabs-AI/lockedin-flow-community/releases"
+                            "https://github.com/LockedinLabs-AI/lockedin-flow/releases"
                     )!
                 )
-                Text("Community builds do not contact an automatic update service.")
+                Text("LockedIn Flow builds do not contact an automatic update service.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -357,20 +364,39 @@ struct SettingsView: View {
                     Spacer()
                     Button("Open Settings") { state.openMicrophoneSettings() }
                 }
+            }
+            Section("Optional automatic typing") {
+                Text("In-app transcription and Copy work without Accessibility access.")
+                Text(
+                    "Automatic typing inspects the focused editor and inserts your transcript. macOS grants broad Accessibility access for this feature, not a typing-only permission. Enable it only if you trust this app and your organization allows it."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 HStack {
                     Label(
-                        "Accessibility",
-                        systemImage: state.accessibilityTrusted
-                            ? "checkmark.circle.fill" : "xmark.circle"
+                        state.automaticInsertionEnabled
+                            ? "Automatic typing selected" : "Automatic typing off",
+                        systemImage: !state.automaticInsertionEnabled
+                            ? "lock.shield"
+                            : state.accessibilityTrusted
+                                ? "checkmark.circle.fill" : "exclamationmark.triangle"
                     )
                     .foregroundStyle(
-                        state.accessibilityTrusted
-                            ? Color(nsColor: .systemGreen) : Color(nsColor: .systemOrange))
+                        !state.automaticInsertionEnabled
+                            ? Color.primary
+                            : state.accessibilityTrusted
+                                ? Color(nsColor: .systemGreen) : Color(nsColor: .systemOrange))
                     Spacer()
-                    Button("Open Settings") { state.openAccessibilitySettings() }
+                    if state.automaticInsertionEnabled {
+                        Button("Use in-app transcription") { state.useInAppTranscription() }
+                    }
+                    if !state.automaticInsertionEnabled || !state.accessibilityTrusted {
+                        Button("Review and enable…") { state.requestAccessibilityAccess() }
+                    }
                 }
+                .disabled(!state.canChangeTranscriptPolicy)
                 Text(
-                    "Accessibility identifies the focused editor, refuses password fields, and inserts text. If Learn from edits is enabled, LockedIn Flow briefly re-reads only the exact field it just wrote; that value stays in memory on this Mac."
+                    "Turning automatic typing off stops this feature; it does not revoke a macOS permission already granted. You can revoke access in System Settings → Privacy & Security → Accessibility."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)

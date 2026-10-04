@@ -138,6 +138,41 @@ final class CaptureRecoveryCoordinatorTests: XCTestCase {
 }
 
 final class AudioCaptureRecoveryLifecycleTests: XCTestCase {
+    func testInvalidAudioStopsSafelyAndPreservesEarlierSamples() throws {
+        for invalid in [Float.nan, .infinity, -.infinity] {
+            let clock = TestUptime()
+            let factory = FakeAudioCaptureEngineFactory(outcomes: [.success])
+            let manager = makeManager(clock: clock, factory: factory)
+            try manager.start()
+            let session = try XCTUnwrap(factory.sessions.first)
+            session.deliver([0.1, 0.2])
+            session.deliver([0.3, invalid])
+            session.deliver([0.4])
+            XCTAssertThrowsError(try manager.recoverCaptureIfNeeded())
+            let result = manager.stopWithResult()
+            XCTAssertNotNil(result.terminalError)
+            XCTAssertEqual(result.samples, [0.1, 0.2])
+            XCTAssertTrue(result.samples.allSatisfy(\.isFinite))
+        }
+    }
+
+    func testNewCaptureAfterInvalidAudioDoesNotInheritFailure() throws {
+        let clock = TestUptime()
+        let factory = FakeAudioCaptureEngineFactory(outcomes: [.success, .success])
+        let manager = makeManager(clock: clock, factory: factory)
+        try manager.start()
+        let old = try XCTUnwrap(factory.sessions.first)
+        old.deliver([.nan])
+        XCTAssertNotNil(manager.stopWithResult().terminalError)
+        try manager.start()
+        old.deliver([.infinity])
+        try XCTUnwrap(factory.sessions.last).deliver([0.5])
+        XCTAssertFalse(try manager.recoverCaptureIfNeeded())
+        let result = manager.stopWithResult()
+        XCTAssertNil(result.terminalError)
+        XCTAssertEqual(result.samples, [0.5])
+    }
+
     func testManagerDefaultsToStandardCaptureWithoutTouchingHardware() throws {
         let clock = TestUptime()
         let factory = FakeAudioCaptureEngineFactory(outcomes: [.success])
@@ -463,6 +498,96 @@ final class AudioCaptureRecoveryLifecycleTests: XCTestCase {
         try XCTUnwrap(factory.sessions.last).deliver([2])
 
         XCTAssertEqual(manager.stopWithResult().samples, [1, 2])
+    }
+
+    func testTwoHundredRouteChangesPreserveEachDictationWithoutLeakingOldCallbacks() throws {
+        let clock = TestUptime()
+        let factory = FakeAudioCaptureEngineFactory(outcomes: [])
+        let manager = AudioCaptureManager(
+            voiceProcessing: .disabled,
+            engineFactory: factory,
+            uptime: { clock.now }
+        )
+
+        for cycle in 0..<200 {
+            clock.now += 1
+            try manager.start()
+            let original = try XCTUnwrap(factory.sessions.last)
+            let firstSample = Float(cycle % 8 + 1) / 16
+            original.deliver([firstSample])
+
+            // A route notification storm must still create only one replacement.
+            for _ in 0..<8 {
+                clock.now += 0.03125
+                original.sendConfigurationChange()
+            }
+            clock.now += CaptureRecoveryCoordinator.settleDelay
+            XCTAssertFalse(try manager.recoverCaptureIfNeeded())
+            XCTAssertEqual(original.stopCount, 1)
+            clock.now += CaptureRecoveryCoordinator.postTeardownDelay
+            XCTAssertTrue(try manager.recoverCaptureIfNeeded())
+
+            let replacement = try XCTUnwrap(factory.sessions.last)
+            original.deliver([-1])
+            original.sendConfigurationChange()
+            replacement.deliver([0.5])
+            let stopped = manager.stopWithResult()
+            XCTAssertEqual(stopped.samples, [firstSample, 0.5], "cycle \(cycle)")
+            XCTAssertNil(stopped.terminalError)
+            XCTAssertFalse(manager.isRecording)
+
+            original.deliver([-1])
+            replacement.deliver([-1])
+            XCTAssertTrue(manager.stopWithResult().samples.isEmpty)
+            XCTAssertEqual(factory.sessions.count, (cycle + 1) * 2)
+        }
+        XCTAssertEqual(factory.maximumActiveSessionCount, 1)
+        XCTAssertTrue(factory.startPreferences.allSatisfy { $0 == .disabled })
+    }
+
+    func testOneHundredStoppedOrCancelledRetriesNeverRestartInTheNextDictation() throws {
+        let clock = TestUptime()
+        let outcomes: [FakeStartOutcome] = (0..<100).flatMap { _ in
+            [.success, .failure(.engineFailed("synthetic route unavailable"))]
+        }
+        let factory = FakeAudioCaptureEngineFactory(outcomes: outcomes)
+        let manager = AudioCaptureManager(
+            voiceProcessing: .disabled,
+            engineFactory: factory,
+            uptime: { clock.now }
+        )
+
+        for cycle in 0..<100 {
+            try manager.start()
+            let original = try XCTUnwrap(factory.sessions.last)
+            original.deliver([0.25])
+            original.sendConfigurationChange()
+            clock.now += CaptureRecoveryCoordinator.settleDelay
+            XCTAssertFalse(try manager.recoverCaptureIfNeeded())
+            clock.now += CaptureRecoveryCoordinator.postTeardownDelay
+            XCTAssertFalse(try manager.recoverCaptureIfNeeded())
+            XCTAssertTrue(manager.isRecording)
+
+            if cycle.isMultiple(of: 2) {
+                XCTAssertEqual(manager.stopWithResult().samples, [0.25])
+            } else {
+                manager.cancel()
+                XCTAssertTrue(manager.stopWithResult().samples.isEmpty)
+            }
+            original.deliver([-1])
+            original.sendConfigurationChange()
+            clock.now += 100
+            XCTAssertFalse(try manager.recoverCaptureIfNeeded())
+            XCTAssertEqual(factory.startPreferences.count, (cycle + 1) * 2)
+            XCTAssertTrue(manager.stopWithResult().samples.isEmpty)
+        }
+
+        try manager.start()
+        try XCTUnwrap(factory.sessions.last).deliver([0.75])
+        let fresh = manager.stopWithResult()
+        XCTAssertEqual(fresh.samples, [0.75])
+        XCTAssertNil(fresh.terminalError)
+        XCTAssertEqual(factory.maximumActiveSessionCount, 1)
     }
 
     private func makeManager(

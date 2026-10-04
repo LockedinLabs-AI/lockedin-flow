@@ -98,11 +98,13 @@ final class DictationController {
     /// boundary. Renderer remounts during recording therefore cannot invalidate
     /// a dictation, while a later application switch still fails closed.
     private struct DictationContext {
-        let targetSnapshot: InsertionTargetSnapshot
+        let targetSnapshot: InsertionTargetSnapshot?
+        let localProfile: AppProfile
+        let deliveryMode: DictationDeliveryMode
         let captureWasInterrupted: Bool
 
-        var focusLock: InsertionFocusLock? { targetSnapshot.focusLock }
-        var profile: AppProfile { targetSnapshot.profile }
+        var focusLock: InsertionFocusLock? { targetSnapshot?.focusLock }
+        var profile: AppProfile { targetSnapshot?.profile ?? localProfile }
     }
 
     private struct UsableCapture {
@@ -139,6 +141,7 @@ final class DictationController {
     /// Guards the opt-in post-insertion edit watch; a new capture or a new
     /// watch invalidates any watch still sleeping.
     private var editWatchToken: UUID?
+    private var captureDeliveryMode: DictationDeliveryMode = .inApp
 
     // Silence auto-stop (toggle mode only)
     private var heardSpeech = false
@@ -217,6 +220,7 @@ final class DictationController {
             for delay: UInt64 in [4_000_000_000, 8_000_000_000, 18_000_000_000] {
                 try? await Task.sleep(nanoseconds: delay)
                 guard let self, self.editWatchToken == token else { return }
+                guard state.automaticInsertionEnabled, state.learnFromEditsEnabled else { return }
                 guard let current = self.inserter.editWatchValue(of: target) else { return }
                 guard current != baseline else { continue }
                 guard
@@ -518,10 +522,6 @@ final class DictationController {
             else { return }
             guard microphoneIsAuthorized else {
                 state.errorMessage = "Microphone permission is required."
-                return
-            }
-            guard TextInserter.isTrusted(prompt: true) else {
-                state.errorMessage = "Accessibility permission is required."
                 return
             }
             do {
@@ -861,6 +861,7 @@ final class DictationController {
         else { return }
         state.errorMessage = nil
         state.statusMessage = nil
+        let deliveryMode = state.deliveryMode
         Task {
             defer {
                 captureStartGate.finish(token)
@@ -876,19 +877,24 @@ final class DictationController {
                 return
             }
             state.microphoneAuthorized = true
+            guard state.deliveryMode == deliveryMode else { return }
 
-            guard TextInserter.isTrusted(prompt: true) else {
-                state.errorMessage = "Accessibility permission is required to insert text."
-                state.accessibilityTrusted = false
-                return
+            if deliveryMode.requiresAccessibility {
+                guard TextInserter.isTrusted(prompt: false) else {
+                    state.errorMessage =
+                        "Automatic insertion needs Accessibility access. Review it in Settings or switch to in-app transcription."
+                    state.accessibilityTrusted = false
+                    return
+                }
+                state.accessibilityTrusted = true
             }
-            state.accessibilityTrusted = true
 
-            // Never open the microphone while macOS explicitly identifies the
-            // current control as secure. This probe retains no AX field and does
-            // not require renderer continuity; delivery performs the full
-            // fail-closed validation again.
-            if let focusLock = FrontmostTracker.shared.focusLock(),
+            // Automatic typing refuses an explicitly secure target before
+            // opening the microphone. In-app transcription never inspects an
+            // external field. Delivery still performs full fail-closed validation
+            // whenever automatic typing is selected.
+            if deliveryMode.requiresAccessibility,
+                let focusLock = FrontmostTracker.shared.focusLock(),
                 inserter.isExplicitSecureFieldFocused(for: focusLock)
             {
                 state.errorMessage =
@@ -913,6 +919,7 @@ final class DictationController {
             // has actually started; denied permissions and start errors leave it
             // available to retry.
             clearFailedDictationRetry()
+            captureDeliveryMode = deliveryMode
             heardSpeech = false
             lastLoudAt = .distantPast
             state.updatePipelineMeetingState(false)
@@ -1033,10 +1040,11 @@ final class DictationController {
         // Freeze the destination application and its formatting profile from a
         // single synchronized snapshot at the user's stop boundary. The exact
         // field remains intentionally unresolved until delivery.
-        let targetSnapshot = FrontmostTracker.shared.targetSnapshot(
-            profileOverrideID: state.profileOverrideID
-        )
-        if let focusLock = targetSnapshot.focusLock,
+        let targetSnapshot =
+            captureDeliveryMode.requiresAccessibility
+            ? FrontmostTracker.shared.targetSnapshot(profileOverrideID: state.profileOverrideID)
+            : nil
+        if let focusLock = targetSnapshot?.focusLock,
             inserter.isExplicitSecureFieldFocused(for: focusLock)
         {
             state.level = 0
@@ -1057,11 +1065,15 @@ final class DictationController {
 
         let context = DictationContext(
             targetSnapshot: targetSnapshot,
+            localProfile: state.effectiveProfile,
+            deliveryMode: captureDeliveryMode,
             captureWasInterrupted: capture.wasInterrupted
         )
 
         state.statusMessage =
-            "Processing locally — keep the destination field focused until insertion finishes."
+            context.deliveryMode.requiresAccessibility
+            ? "Processing locally — keep the destination field focused until insertion finishes."
+            : "Transcribing locally — your text will appear in LockedIn Flow."
         processAndInsert(capture.samples, context: context)
     }
 
@@ -1109,7 +1121,9 @@ final class DictationController {
                     return
                 }
 
-                if let command = commandParser.command(for: raw) {
+                if context.deliveryMode.requiresAccessibility,
+                    let command = commandParser.command(for: raw)
+                {
                     activePipelineSamples = nil
                     activePipelineKind = nil
                     activeDictationContext = nil
@@ -1156,7 +1170,8 @@ final class DictationController {
                         // Translation is an enhancement; inserting the original
                         // transcript is always safer than losing the dictation.
                         FlowLog.error("translation failed code=\(errorCode: error)")
-                        state.statusMessage = "Translation unavailable — inserted the original."
+                        state.statusMessage =
+                            "Translation unavailable — kept the original transcript."
                     }
                 }
                 guard !Task.isCancelled else { return }
@@ -1171,6 +1186,13 @@ final class DictationController {
                 // persisted and copied below, but a late secure-field race must
                 // never write the transcript to History, Recovery, or pasteboard.
                 guard !Task.isCancelled else { return }
+                if context.deliveryMode == .inApp {
+                    completeInAppTranscription(
+                        raw: raw, final: final, duration: audioDuration,
+                        context: context, state: state)
+                    resetToReadySoon()
+                    return
+                }
                 await completeInsertion(
                     raw: raw,
                     final: final,
@@ -1196,6 +1218,29 @@ final class DictationController {
             }
             if !Task.isCancelled { resetToReadySoon() }
         }
+    }
+
+    private func completeInAppTranscription(
+        raw: String, final: String, duration: TimeInterval,
+        context: DictationContext, state: AppState
+    ) {
+        state.lastRaw = raw
+        state.lastFinal = final
+        let outcome =
+            context.captureWasInterrupted ? "transcribed:local:partial-audio" : "transcribed:local"
+        recordHistory(
+            raw: raw, final: final, duration: duration, appName: nil,
+            profile: context.profile, state: state, outcome: outcome)
+        state.wordsThisSession += final.split(separator: " ").count
+        state.pipelineState = .done
+        state.overlayTone = .success
+        state.statusMessage =
+            context.captureWasInterrupted
+            ? "Microphone interrupted. The captured portion is in LockedIn Flow; review the ending before copying."
+            : "Transcript ready in LockedIn Flow. Choose Copy when you want to use it elsewhere."
+        activeDictationContext = nil
+        activeCaptureWasInterrupted = false
+        state.showHomeWindow()
     }
 
     private func recordHistory(
@@ -1259,6 +1304,10 @@ final class DictationController {
 
     func reinsertLast() {
         guard let state else { return }
+        guard state.automaticInsertionEnabled else {
+            state.errorMessage = "Automatic insertion is off. Use Copy or enable it in Settings."
+            return
+        }
         guard state.pendingReinsertInspection == nil,
             !reinsertTaskGate.hasPendingInspection
         else {
@@ -1390,6 +1439,10 @@ final class DictationController {
     ) {
         guard let state else {
             completion(.failure(InsertionError.noTargetApplication))
+            return
+        }
+        guard state.automaticInsertionEnabled else {
+            completion(.failure(InsertionError.accessibilityNotTrusted))
             return
         }
         if let notice = state.pendingReinsertInspection {
@@ -1595,9 +1648,9 @@ final class DictationController {
             let retryContext =
                 context
                 ?? DictationContext(
-                    targetSnapshot: FrontmostTracker.shared.targetSnapshot(
-                        profileOverrideID: state.profileOverrideID
-                    ),
+                    targetSnapshot: nil,
+                    localProfile: state.effectiveProfile,
+                    deliveryMode: .inApp,
                     captureWasInterrupted: false
                 )
             processAndInsert(

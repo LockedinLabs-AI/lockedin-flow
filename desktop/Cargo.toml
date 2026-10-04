@@ -1,0 +1,25 @@
+[workspace]
+members = ["core", "engine", "app"]
+exclude = ["vendor/glib"]
+resolver = "2"
+
+[patch.crates-io]
+# GTK3 consumers still require the 0.18 API. Carry only the upstream safety fix.
+glib = { path = "vendor/glib" }
+
+[workspace.package]
+version = "0.5.0-alpha.1"
+edition = "2021"
+rust-version = "1.94"
+license = "MIT"
+repository = "https://github.com/LockedinLabs-AI/LockedIn-Flow"
+
+[workspace.dependencies]
+serde = { version = "=1.0.228", features = ["derive"] }
+serde_json = "=1.0.149"
+zeroize = "=1.8.2"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

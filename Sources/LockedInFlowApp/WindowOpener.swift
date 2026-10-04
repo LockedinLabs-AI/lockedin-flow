@@ -37,10 +37,31 @@ final class WindowOpener {
     func showOnboarding(state: AppState) {
         show(
             key: "onboarding", title: "Welcome to LockedIn Flow",
-            size: NSSize(width: 520, height: 420)
+            size: NSSize(width: 560, height: 500),
+            minSize: NSSize(width: 520, height: 480),
+            resizable: true
         ) {
             OnboardingView().environmentObject(state)
         }
+    }
+
+    func closeOnboarding() {
+        windows.removeValue(forKey: "onboarding")?.close()
+    }
+
+    func showModelSetup(state: AppState) {
+        show(
+            key: "model-setup", title: "LockedIn Flow — Speech Models",
+            size: NSSize(width: 600, height: 660),
+            minSize: NSSize(width: 520, height: 480),
+            resizable: true
+        ) {
+            ModelSetupView().environmentObject(state)
+        }
+    }
+
+    func closeModelSetup() {
+        windows["model-setup"]?.close()
     }
 
     func showMeetings(state: AppState) {

@@ -12,13 +12,13 @@
     "privacy",
     "speech-to-text"
   ],
-  "homepage": "https://github.com/LockedinLabs-AI/lockedin-flow-community#readme",
+  "homepage": "https://github.com/LockedinLabs-AI/lockedin-flow#readme",
   "bugs": {
-    "url": "https://github.com/LockedinLabs-AI/lockedin-flow-community/issues"
+    "url": "https://github.com/LockedinLabs-AI/lockedin-flow/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LockedinLabs-AI/lockedin-flow-community.git"
+    "url": "git+https://github.com/LockedinLabs-AI/lockedin-flow.git"
   },
   "license": "MIT",
   "type": "module",

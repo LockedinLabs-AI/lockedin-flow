@@ -800,6 +800,22 @@ public final class AudioCaptureManager: @unchecked Sendable {
         generation: CaptureSampleStore.Generation
     ) {
         stateLock.lock()
+        guard sampleStore.generation == generation, captureFailure.failure == nil else {
+            stateLock.unlock()
+            return
+        }
+        // Never forward invalid device/converter output into voice detection or
+        // recognition. Preserve earlier valid audio for the existing partial-
+        // recording recovery path; later callbacks cannot extend a failed stream.
+        guard level.isFinite, peak.isFinite, samples.allSatisfy(\.isFinite) else {
+            captureFailure.record(
+                AudioCaptureError.engineFailed(
+                    "The microphone delivered invalid audio. Earlier captured audio is preserved."
+                )
+            )
+            stateLock.unlock()
+            return
+        }
         let accepted = sampleStore.append(samples, generation: generation)
         if accepted {
             captureSignalProbe.record(

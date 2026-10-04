@@ -52,7 +52,7 @@ function doctor() {
   console.log(`OK  ${toolchain}`);
   console.log(`OK  developer tools: ${developerDirectory}`);
 
-  const app = path.join(homedir(), "Applications", "LockedIn Flow Community.app");
+  const app = path.join(homedir(), "Applications", "LockedIn Flow.app");
   console.log(`${existsSync(app) ? "OK " : "-- "} local app: ${app}`);
   const models = path.join(
     homedir(),
@@ -119,11 +119,11 @@ function setup(args) {
 
   doctor();
   console.log("\nInstalling the local evaluation app…");
-  run(path.join(root, "scripts", "install-community-app.sh"), installerArgs);
+  run(path.join(root, "scripts", "install-app.sh"), installerArgs);
   console.log("\nProvisioning the default local models (~484 MB)…");
   run(process.execPath, [path.join(root, "scripts", "provision-models.mjs"), ...modelArgs]);
 
-  const app = path.join(homedir(), "Applications", "LockedIn Flow Community.app");
+  const app = path.join(homedir(), "Applications", "LockedIn Flow.app");
   console.log(
     "\nSetup complete. Models are provisioned; apply your egress policy and run acceptance."
   );
@@ -155,7 +155,7 @@ switch (command) {
     break;
   case "package":
     requireSupportedMac();
-    run(path.join(root, "scripts", "package-community-app.sh"), args);
+    run(path.join(root, "scripts", "package-app.sh"), args);
     break;
   case "package-pkg":
     requireSupportedMac();
@@ -163,7 +163,7 @@ switch (command) {
     break;
   case "install":
     requireSupportedMac();
-    run(path.join(root, "scripts", "install-community-app.sh"), args);
+    run(path.join(root, "scripts", "install-app.sh"), args);
     break;
   case "provision-models":
     requireSupportedMac();

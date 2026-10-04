@@ -79,14 +79,14 @@ pass
 
 /usr/bin/grep -Fq \
     '"$ROOT/scripts/verify-production-binary.sh" "$EXECUTABLE"' \
-    "$ROOT/scripts/package-community-app.sh" \
-    || fail "community packaging does not invoke the production binary gate"
+    "$ROOT/scripts/package-app.sh" \
+    || fail "application packaging does not invoke the production binary gate"
 pass
 
 /usr/bin/grep -Fq \
     '"$ROOT/scripts/verify-build-toolchain.sh"' \
-    "$ROOT/scripts/package-community-app.sh" \
-    || fail "community packaging does not enforce the pinned release toolchain"
+    "$ROOT/scripts/package-app.sh" \
+    || fail "application packaging does not enforce the pinned release toolchain"
 pass
 
 for expected_toolchain_value in \
@@ -111,7 +111,7 @@ pass
 # silently launching a release app that cannot recognize the requested command.
 for diagnostic_script in selftest.sh soak.sh; do
     /usr/bin/grep -Fq \
-        'swift build -c debug --product lockedin-flow-community' \
+        'swift build -c debug --product lockedin-flow' \
         "$ROOT/scripts/$diagnostic_script" \
         || fail "$diagnostic_script does not build the debug diagnostics target"
     pass
@@ -147,7 +147,7 @@ pass
 pass
 
 if /usr/bin/grep -R -Fq 'Sparkle' "$ROOT/Package.swift" "$ROOT/Sources"; then
-    fail "Community source unexpectedly links or references the updater framework"
+    fail "LockedIn Flow source unexpectedly links or references the updater framework"
 fi
 pass
 

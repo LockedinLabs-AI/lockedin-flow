@@ -77,7 +77,7 @@ before atomically activating a complete model directory. It sends no microphone
 or transcript content. Enterprise endpoints can omit that tool and receive the
 same verified tree through an approved package or MDM channel.
 
-The Community app is not sandboxed, and the FluidAudio dependency is a general
+The LockedIn Flow app is not sandboxed, and the FluidAudio dependency is a general
 library that may contain network-capable code even though its model hub is forced
 offline here. Endpoint firewall or EDR policy remains the enforceable network
 boundary for regulated deployment.
@@ -95,7 +95,7 @@ stages the text, posts one event only after target revalidation, verifies the
 expected receipt, and restores the prior pasteboard only while it still owns the
 transaction. Another application's newer clipboard write is preserved.
 
-Community builds do not copy text to the clipboard automatically after a failed
+LockedIn Flow builds do not copy text to the clipboard automatically after a failed
 insertion. A recoverable non-sensitive transcript remains in local
 History/Recovery under the selected retention policy for an explicit retry or
 copy. Secure or security-unverifiable target failures discard the transcript
@@ -117,11 +117,11 @@ with a device-bound accessibility class. This protects normal at-rest access;
 it does not protect against a compromised administrator, root process, malicious
 device-management profile, or unlocked user session.
 
-The source-built Community application has a distinct bundle identifier,
+The source-built LockedIn Flow application has a distinct bundle identifier,
 Application Support directory, preferences domain, log subsystem, and Keychain
 service. Those namespaces prevent accidental collision and the application does
 not intentionally access or migrate another build's stores. They are not an
-operating-system isolation boundary: the Community app is not App-Sandboxed and
+operating-system isolation boundary: the LockedIn Flow app is not App-Sandboxed and
 runs with the signed-in user's ordinary filesystem access in addition to the
 Microphone and Accessibility permissions the user grants.
 

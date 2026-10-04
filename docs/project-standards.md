@@ -8,6 +8,45 @@ See the [AI-assisted development lifecycle](secure-development.md) and
 [third-party risk register](third-party-risk.md) for operational ownership,
 adversarial-review scope, and evidence boundaries.
 
+## Product engineering contract
+
+These are release requirements, not a claim that every candidate already meets
+them. The approach follows the evidence-linked practices in
+[Agent Console's engineering principles](https://github.com/LockedinLabs-AI/agent-console/blob/211f00598af4bcbabc329ee3ad6f1089b275868b/docs/PRINCIPLES.md),
+adapted for an offline desktop application. We reuse the standard, not another
+product's test results or network architecture.
+
+| Promise | Required proof in LockedIn Flow | Release boundary |
+| --- | --- | --- |
+| An ordinary person can install it | Test the actual published download and documented installation steps on a clean supported machine; verify version, model availability, first dictation, and uninstall | A build or source-setup command alone is insufficient |
+| Speech processing stays local | Pinned model identity, offline runtime policy, synthetic speech with networking denied, and exact-artifact network observation | Include OS/webview processes and destination/clipboard policies; setup networking is separate |
+| Dictation survives ordinary disruption | Recovery regression tests and repeated physical microphone, sleep/wake, focus-change, and meeting-app coexistence checks | No lost completed transcript, duplicate delivery, or unsafe insertion in the accepted matrix; refusals are recorded separately |
+| Permissions are understandable and minimal | Branded first-use prompts; record/review/Copy without Accessibility; explicit opt-in for automatic typing | No background permission grants or requests from an unbranded executable |
+| Source and dependencies are inspectable | Clear module boundaries, locked inputs, license notices, reviewed model manifests, SBOM, and dependency/advisory checks | State inventory/scanner coverage and record unresolved exceptions |
+| Changes are reviewable | Focused commits, regression tests, required independent review, protected branches, and security-boundary documentation | AI review supplements, rather than impersonates, an independent maintainer |
+| Downloads are verifiable | Exact source and artifact hashes, signing, provenance, versioned release notes, and download-byte verification | Evaluation-artifact attestations do not cover a later signed release |
+| Claims match the product | Current screenshots with synthetic examples; keyboard/screen-reader checks; published support matrix and measured performance | Do not turn a successful build, illustration, or planned feature into an acceptance claim |
+| The project can be maintained | Private vulnerability reporting, dependency monitoring, documented upgrade/rollback/removal, support ownership, and a supported-version policy | Do not promise response-time guarantees or long-term support without staffed ownership |
+
+Tests, source, and procedures for these requirements are linked in
+[Validation evidence](validation.md), [Compatibility](compatibility.md),
+[Release process](release-process.md), and the [desktop port](../desktop/README.md).
+A portable source tree is not universal desktop support: each operating-system,
+architecture, installer, and feature combination earns its own acceptance.
+
+### Reuse across LockedIn Labs projects
+
+For each new open-source product, publish the same small set of reviewable
+answers: what it does, what it reads/writes/transmits, how to install and remove
+it, which platforms actually passed, how each important promise is tested, how
+to verify a download, and who handles defects. Keep the evidence next to the
+implementation and bind release results to an exact revision and artifact.
+
+Apply controls where the product has the relevant boundary. Agent Console needs
+authenticated reporting and network isolation; LockedIn Flow's core dictation
+does not need a server, accounts, SSO, or a listener. Adding those solely to look
+enterprise-oriented would enlarge its security and operational surface.
+
 ## Reference practices
 
 | Reference | Application in this project | Evidence |
@@ -35,6 +74,16 @@ exports, unreviewed binary assets, and broken local documentation links. Its
 output contains rule names and hashed file identifiers, never matching content
 or unreviewed file paths. An entry identifier is the first 12 characters of the
 SHA-256 of the repository-relative path; resolve it locally when investigating.
+
+The [Public metadata workflow](../.github/workflows/public-metadata.yml) also
+checks pull-request titles and descriptions on creation, edits, and code updates.
+It detects the publication policy's private-content patterns and a narrow set of
+credential shapes, without printing matched text or validating secrets online.
+It runs without repository secrets or privileged pull-request execution. It
+does not scan issue comments, recognize all confidential prose, or erase text
+already posted publicly. Review before posting; a failed check requires private
+incident triage and credential rotation when applicable, not merely editing the
+description until it turns green.
 
 Run `npm run check:public -- --history` against the complete proposed publication
 history before first publication. Use a full clone: a shallow clone cannot prove

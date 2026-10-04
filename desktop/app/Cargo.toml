@@ -1,0 +1,27 @@
+[package]
+name = "lockedin-flow-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "LockedIn Flow offline dictation desktop application"
+default-run = "lockedin-flow-desktop"
+
+[build-dependencies]
+tauri-build = { version = "=2.7.0", features = [] }
+
+[dependencies]
+lockedin-flow-core = { path = "../core" }
+lockedin-flow-engine = { path = "../engine" }
+tauri = { version = "=2.12.0", features = [] }
+arboard = { version = "=3.6.1", default-features = false, features = ["wayland-data-control"] }
+serde.workspace = true
+serde_json.workspace = true
+zeroize.workspace = true
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+glib = "=0.18.5"

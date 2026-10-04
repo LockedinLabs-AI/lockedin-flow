@@ -1,0 +1,19 @@
+[package]
+name = "lockedin-flow-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Local CPU speech recognition and microphone capture for LockedIn Flow"
+
+[dependencies]
+lockedin-flow-core = { path = "../core" }
+cpal = "=0.15.3"
+rubato = "=4.0.0"
+sha2 = "=0.10.9"
+whisper-rs = { version = "=0.16.0", default-features = false }
+zeroize.workspace = true
+
+[dev-dependencies]
+hound = "=3.5.1"

@@ -6,7 +6,7 @@ usage-based API, daemon, or inbound listener. Speech recognition and cleanup run
 on the managed Mac, and administrators can pre-stage the exact model set through
 their existing software-delivery channel.
 
-The MIT-licensed Community edition has no per-seat software license or inference
+LockedIn Flow has no per-seat software license or inference
 charge. That does not make deployment costless: the organization still owns
 endpoint management, hardware capacity, validation, support, and model-license
 obligations. LockedIn Flow is designed to reduce disclosure surface in regulated
@@ -19,7 +19,7 @@ workflows; it is not a compliance certification.
 - The source is designed to require no runtime network after verified model provisioning; blocked-network validation of the exact release artifact remains a promotion gate.
 - Missing, corrupt, or unexpected recognition-model files prevent that model from loading and provide provisioning guidance; optional voice-activity detection can degrade to untrimmed audio without loading an unverified model.
 - Password fields and unverifiable insertion targets fail closed; ambiguous delivery is never blindly repeated.
-- The Community source can be inspected, built, tested, and deployed without an account or per-seat inference fee.
+- The LockedIn Flow source can be inspected, built, tested, and deployed without an account or per-seat inference fee.
 
 Do not shorten these statements to “certified,” “absolutely secure,” “zero cost,”
 or “always works.” Enterprise confidence comes from an enforceable boundary and
@@ -117,7 +117,7 @@ application egress, and measure accuracy, failed-delivery recovery, support
 load, resource use, and time saved. It fits the workplace stack the organization
 already operates instead of asking the buyer to approve a new inference cloud.
 
-The Community edition can remain free. A later commercial offer can cover
+LockedIn Flow is free under MIT. A later commercial offer can cover
 signed long-term-support releases, managed packaging, security maintenance,
 terminology-pack lifecycle, compatibility validation, and enterprise support.
 Those services are a business option, not a capability or service-level promise

@@ -33,9 +33,9 @@ APPLESCRIPT
 trap cleanup EXIT
 
 echo "==> Building diagnostic executable (debug-only commands)"
-swift build -c debug --product lockedin-flow-community
+swift build -c debug --product lockedin-flow
 BIN_DIR="$(swift build -c debug --show-bin-path)"
-BIN="$BIN_DIR/lockedin-flow-community"
+BIN="$BIN_DIR/lockedin-flow"
 
 PHRASE="the quick brown fox jumps over the lazy dog"
 echo "==> Synthesizing speech: \"$PHRASE\""

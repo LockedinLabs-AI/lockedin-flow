@@ -1,18 +1,18 @@
 #!/bin/bash
-# Build and install the ad-hoc-signed Community app for local evaluation.
+# Build and install LockedIn Flow for local evaluation with an ad-hoc signature.
 # Official and managed distribution must use the Developer ID signed,
 # notarized package described in docs/managed-deployment.md.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DESTINATION="$HOME/Applications/LockedIn Flow Community.app"
+DESTINATION="$HOME/Applications/LockedIn Flow.app"
 REPLACE=0
 LAUNCH=0
 SKIP_BUILD=0
 
 usage() {
     cat <<'EOF'
-Usage: scripts/install-community-app.sh [options]
+Usage: scripts/install-app.sh [options]
 
 Options:
   --destination <absolute.app>  Install location (default: ~/Applications)
@@ -63,10 +63,10 @@ case "$DESTINATION" in
 esac
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
-    "$ROOT/scripts/package-community-app.sh"
+    "$ROOT/scripts/package-app.sh"
 fi
 
-SOURCE_APP="$ROOT/build/LockedIn Flow Community.app"
+SOURCE_APP="$ROOT/build/LockedIn Flow.app"
 if [ ! -d "$SOURCE_APP" ]; then
     echo "ERROR: packaged app not found: $SOURCE_APP" >&2
     exit 1
@@ -82,7 +82,7 @@ fi
 DESTINATION_PARENT="$(dirname "$DESTINATION")"
 mkdir -p "$DESTINATION_PARENT"
 STAGING_DIRECTORY="$(mktemp -d "$DESTINATION_PARENT/.lockedin-flow-install.XXXXXX")"
-STAGED_APP="$STAGING_DIRECTORY/LockedIn Flow Community.app"
+STAGED_APP="$STAGING_DIRECTORY/LockedIn Flow.app"
 BACKUP=""
 
 cleanup() {

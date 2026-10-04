@@ -19,7 +19,7 @@ let package = Package(
     name: "LockedInFlow",
     platforms: [.macOS(.v15)],
     products: [
-        .executable(name: "lockedin-flow-community", targets: ["LockedInFlowApp"]),
+        .executable(name: "lockedin-flow", targets: ["LockedInFlowApp"]),
         .library(name: "VoiceCore", targets: ["VoiceCore"]),
     ],
     dependencies: [

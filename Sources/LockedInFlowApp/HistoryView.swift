@@ -179,7 +179,8 @@ struct HistoryView: View {
                                     completion: completion
                                 )
                             },
-                            reinsertBlocked: state.pendingReinsertInspection != nil,
+                            reinsertBlocked: state.pendingReinsertInspection != nil
+                                || !state.automaticInsertionEnabled,
                             ownedInspection: state.pendingReinsertInspection.flatMap {
                                 $0.sourceID == entry.id ? $0 : nil
                             },

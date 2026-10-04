@@ -1,0 +1,19 @@
+# Reproducible CPU baseline. Do not specialize distributed binaries for the CI host.
+[env]
+# cc-rs forwards target-scoped flags to CMake for direct Cargo test/dev builds.
+# clang-cl requires this for the speech engine's C++ error-handling paths.
+CXXFLAGS_x86_64_pc_windows_msvc = "/EHsc"
+# Never inherit network-capable native backends or runtime loading from a developer shell.
+WHISPER_CURL = { value = "OFF", force = true }
+WHISPER_FFMPEG = { value = "OFF", force = true }
+WHISPER_BUILD_SERVER = { value = "OFF", force = true }
+GGML_RPC = { value = "OFF", force = true }
+GGML_BACKEND_DL = { value = "OFF", force = true }
+GGML_NATIVE = { value = "OFF", force = true }
+GGML_SSE42 = { value = "OFF", force = true }
+GGML_BMI2 = { value = "OFF", force = true }
+GGML_AVX = { value = "OFF", force = true }
+GGML_AVX2 = { value = "OFF", force = true }
+GGML_AVX512 = { value = "OFF", force = true }
+GGML_FMA = { value = "OFF", force = true }
+GGML_F16C = { value = "OFF", force = true }

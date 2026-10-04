@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { dependencyQueries, queryAdvisories } from "../../scripts/lib/dependency-advisories.mjs";
+import { dependencyQueries, queryAdvisories, queryCrateAdvisories } from "../../scripts/lib/dependency-advisories.mjs";
 
 const commit = "a".repeat(40);
 const response = (value) => ({ ok: true, json: async () => value });
@@ -32,6 +32,14 @@ test("service errors and malformed responses never become a clean scan", async (
 test("repeated pagination and invalid commits fail closed", async () => {
   await assert.rejects(queryAdvisories(commit, async () => response({ next_page_token: "same" })));
   await assert.rejects(queryAdvisories("not-a-commit"));
+});
+test("registry queries send only a validated public crate identity", async () => {
+  assert.deepEqual(await queryCrateAdvisories("glib", "0.18.5", async (_, options) => {
+    assert.deepEqual(JSON.parse(options.body), { package: { ecosystem: "crates.io", name: "glib" }, version: "0.18.5" });
+    return response({ vulns: [{ id: "SYNTHETIC-ADVISORY" }] });
+  }), ["SYNTHETIC-ADVISORY"]);
+  await assert.rejects(queryCrateAdvisories("../private", "0.18.5"));
+  await assert.rejects(queryCrateAdvisories("glib", "not-a-version"));
 });
 test("inventory rejects unreviewed packages, drifting vendors, and incomplete coverage", () => {
   const resolved = { version: 3, pins: [{ identity: "synthetic", location: "https://example.com/source.git", kind: "remoteSourceControl", state: { revision: commit } }] };

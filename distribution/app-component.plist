@@ -12,7 +12,7 @@
         <key>BundleOverwriteAction</key>
         <string>upgrade</string>
         <key>RootRelativeBundlePath</key>
-        <string>Applications/LockedIn Flow Community.app</string>
+        <string>Applications/LockedIn Flow.app</string>
     </dict>
 </array>
 </plist>

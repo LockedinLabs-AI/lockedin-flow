@@ -1,0 +1,12 @@
+[package]
+name = "lockedin-flow-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Offline dictation policy and bounded audio buffers, independent of the desktop shell"
+
+[dependencies]
+serde.workspace = true
+zeroize.workspace = true

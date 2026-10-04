@@ -486,7 +486,7 @@ struct FloatingBarView: View {
                 if state.statusMessage == "Meeting notes ready." { return "Meeting notes ready" }
                 return "Meeting finished"
             }
-            return "Inserted"
+            return state.automaticInsertionEnabled ? "Inserted" : "Transcript ready"
         case .failed:
             return state.errorMessage
                 ?? (state.pipelineIsMeeting ? "Meeting failed" : "Dictation failed")
@@ -548,7 +548,7 @@ struct FloatingBarView: View {
         case .preparingModel: return "Verifying speech model"
         case .retryModel: return "Verify speech model"
         case .requestMicrophone: return "Allow microphone access"
-        case .requestAccessibility: return "Allow text insertion"
+        case .requestAccessibility: return "Review automatic typing"
         case .finish: return state.pipelineIsMeeting ? "Finish meeting" : "Finish dictation"
         case .working: return state.pipelineIsMeeting ? "Finishing meeting" : "Finishing dictation"
         }
@@ -562,7 +562,8 @@ struct FloatingBarView: View {
             return "Dictation will be available after the provisioned model is verified"
         case .retryModel: return "Verifies the provisioned on-device speech model again"
         case .requestMicrophone: return "Requests macOS microphone permission"
-        case .requestAccessibility: return "Requests permission to place text at the cursor"
+        case .requestAccessibility:
+            return "Explains optional Accessibility access before requesting it"
         case .finish: return "Stops the current recording"
         case .working: return "The current recording is being finished locally"
         }

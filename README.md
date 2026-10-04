@@ -29,14 +29,14 @@ Engineering evidence: [AI-assisted SDLC](docs/secure-development.md) ·
 [Third-party risk](docs/third-party-risk.md) · [Validation](docs/validation.md).
 
 <p align="center">
-  <a href="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/security.yml"><img alt="Security checks" src="https://github.com/LockedinLabs-AI/lockedin-flow-community/actions/workflows/security.yml/badge.svg"></a>
+  <a href="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/security.yml"><img alt="Security checks" src="https://github.com/LockedinLabs-AI/lockedin-flow/actions/workflows/security.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <a href="https://support.apple.com/macos"><img alt="macOS 15 or newer" src="https://img.shields.io/badge/macOS-15%2B-0b0c0f.svg"></a>
 </p>
 
 <p align="center">
-  <img src="docs/images/lockedin-flow-home-v2.png" width="780" alt="LockedIn Flow Community home window with the Control-Shift-Space shortcut, on-device processing path, and synthetic recent dictations">
+  <img src="docs/images/lockedin-flow-home-v2.png" width="780" alt="LockedIn Flow home window with the Control-Shift-Space shortcut, on-device processing path, and synthetic recent dictations">
 </p>
 
 <p align="center">
@@ -53,7 +53,9 @@ Engineering evidence: [AI-assisted SDLC](docs/secure-development.md) ·
 
 LockedIn Flow is a reviewable endpoint utility for managed Apple-silicon Macs.
 It captures speech, transcribes it with an on-device model, cleans the text
-locally, and inserts it into the focused application. Microphone audio and
+locally, and shows a transcript you can copy. Automatic typing into another app
+is an explicit opt-in; ordinary transcription needs no Accessibility access.
+Microphone audio and
 transcript text are not sent to a hosted transcription or large-language-model
 service.
 
@@ -62,25 +64,36 @@ external LLM, or application egress. Each endpoint handles its own speech
 workload; there is no shared transcription backend to provision. The destination
 app may transmit the inserted text under its own policy.
 
+Offline means you can turn off the network and dictate into a local editor after
+setup. The speech models run on your device; they are third-party models, not
+models trained or owned by LockedIn Labs. See the [model inventory and licenses](docs/model-licenses.md).
+
 ```mermaid
 flowchart LR
   subgraph Mac[Your managed Mac]
     A[Microphone · memory] --> B[Local speech model]
     B --> C[Local cleanup and terminology]
-    C --> D[Focused application]
+    C --> D[In-app transcript]
+    D --> E[Copy when you choose]
+    C -. Optional automatic typing .-> F[Focused application]
   end
 ```
 
-The Community edition is MIT-licensed and free for individual, educational,
+LockedIn Flow is MIT-licensed and free for individual, educational,
 and commercial use. No license key, subscription, or per-seat fee is required.
 Third-party dependencies and model artifacts retain their own license terms;
 see [Dependency and model licenses](docs/model-licenses.md).
 
 ## Choose your path
 
+Windows and Linux support is being built as a separate, real offline desktop
+port with standard EXE/MSI and DEB/RPM/AppImage packaging. See the
+[desktop source-evaluation guide](desktop/README.md) for its capabilities,
+installation targets, and release gates. It is not yet a signed public download.
+
 | Path | Intended use | Delivery | Status |
 | --- | --- | --- | --- |
-| Community download | Individual macOS use | Free signed and notarized download | Pending the release gates above |
+| LockedIn Flow download | Individual macOS use | Free signed and notarized download | Pending the release gates above |
 | Source evaluation | Engineers reviewing or testing the current candidate | Clone, `npm ci --ignore-scripts --no-audit --no-fund`, `npm run doctor`, `npm run setup:local` | Available from source |
 | Managed enterprise pilot | Controlled deployment on managed Macs | Signed PKG through mobile device management, pre-staged verified models, policy controls, and measured acceptance | Target delivery after release validation |
 
@@ -122,7 +135,8 @@ targets.
 - deterministic cleanup for punctuation, fillers, formatting, and spoken code
 - optional contextual cleanup through Apple's on-device Foundation Models
 - global shortcut and menu-bar workflow
-- Accessibility-based text insertion with a verified pasteboard fallback
+- in-app transcription without Accessibility access or automatic clipboard changes
+- optional Accessibility-based text insertion with a verified pasteboard fallback
 - optional encrypted persistence for history and recovery; encrypted local vocabulary and snippets
 - profile-scoped terminology import with quoted CSV, strict limits, local encrypted storage, and a [synthetic starter template](examples/terminology-template.csv)
 - session-only dictation history by default, with configurable encrypted retention
@@ -154,7 +168,7 @@ locally and remain until the user deletes them.
 - Apple silicon Mac
 - macOS 15 or later
 - Node.js 20 or later for the optional npm source-evaluation commands
-- Microphone and Accessibility permission
+- Microphone permission; Accessibility is optional for automatic typing into other apps
 - approximately 484 MB for the default speech and voice-activity models
 
 Base dictation runs on macOS 15. Optional Foundation Models cleanup,
@@ -172,14 +186,14 @@ is not used by the installed app. The reproducible source-evaluation path is pin
 those exact versions before setup changes the machine.
 
 ```bash
-git clone https://github.com/LockedinLabs-AI/lockedin-flow-community.git
-cd lockedin-flow-community
+git clone https://github.com/LockedinLabs-AI/lockedin-flow.git
+cd lockedin-flow
 npm ci --ignore-scripts --no-audit --no-fund
 npm run doctor
 npm run setup:local
 ```
 
-`setup:local` explicitly builds and installs the ad-hoc-signed Community app in
+`setup:local` explicitly builds and installs the ad-hoc-signed LockedIn Flow app in
 `~/Applications`, then retrieves and verifies the default pinned model set. It
 does not hide model acquisition inside `npm install`. Existing applications are
 never overwritten unless the user passes `--replace`; the previous bundle is
@@ -208,7 +222,7 @@ installation shape without presenting it as a production artifact:
 npm run package:pkg
 ```
 
-The Community bundle is ad-hoc signed for local evaluation and uses its own
+The LockedIn Flow bundle is ad-hoc signed for local evaluation and uses its own
 bundle identifier, preferences domain, Application Support directory, and
 Keychain service. It contains no updater and can be evaluated without touching a
 separately installed build. An official downloadable artifact will be Developer ID signed,
@@ -222,7 +236,7 @@ See [Enterprise adoption](docs/enterprise-adoption.md) and
 
 ## Current status
 
-The initial Community release candidate is based on v0.4.17/build 19 source. It
+The initial LockedIn Flow release candidate is based on v0.4.17/build 19 source. It
 includes a focused-target stability change for renderer-driven editors such as
 Codex and Claude: delivery uses bounded coherent observations of the current
 focused editor instead of synchronously scanning an entire changing
@@ -232,7 +246,7 @@ recording. The destination application is frozen when recording ends, and the
 current non-secure text field is resolved only at delivery. Secure fields,
 application changes during processing, and unresolved target churn fail closed.
 
-No official Community binary is published from this repository yet. The first
+No official LockedIn Flow binary is published from this repository yet. The first
 artifact remains withheld until the v0.4.17 source passes repeated installed
 record-to-exactly-once acceptance. Source readiness is not presented as
 installed-product acceptance. See [CHANGELOG.md](CHANGELOG.md) and
@@ -248,6 +262,7 @@ installed-product acceptance. See [CHANGELOG.md](CHANGELOG.md) and
 - [Enterprise adoption and product boundary](docs/enterprise-adoption.md)
 - [Enterprise evaluation and pilot scorecard](docs/enterprise-evaluation.md)
 - [Engineering and publication standards](docs/project-standards.md)
+- [Product engineering contract](docs/project-standards.md#product-engineering-contract)
 - [Validation evidence](docs/validation.md)
 - [Compatibility status](docs/compatibility.md)
 - [Security reporting](SECURITY.md)

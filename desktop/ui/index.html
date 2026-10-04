@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>LockedIn Flow</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="identity">
+        <span class="flow-mark" aria-hidden="true"
+          ><i></i><i></i><i></i><i></i><i></i
+        ></span>
+        <div>
+          <strong>LockedIn Flow</strong
+          ><span>YOUR VOICE. YOUR ENVIRONMENT.</span>
+        </div>
+      </div>
+      <span class="privacy-badge"
+        ><span aria-hidden="true">●</span> On-device processing</span
+      >
+    </header>
+    <main>
+      <section class="workspace" aria-labelledby="workspace-heading">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">PRIVATE DICTATION WORKSPACE</p>
+            <h1 id="workspace-heading">Speak your next step.</h1>
+          </div>
+          <span class="session-badge">Session only</span>
+        </div>
+        <p class="intro">
+          Turn your thinking into a prompt, a handoff, or a note. Your speech is
+          transcribed here, without a cloud model.
+        </p>
+        <section class="capture" aria-labelledby="capture-title">
+          <div class="capture-top">
+            <span id="capture-title">Preparing local engine</span
+            ><time id="timer" aria-label="Recording duration">00:00</time>
+          </div>
+          <div class="capture-middle">
+            <span class="mic-icon" aria-hidden="true">⏺</span>
+            <div>
+              <strong id="phase-heading">Getting ready</strong>
+              <p id="phase-detail">
+                Verifying the model bundled with this application.
+              </p>
+            </div>
+            <div class="meter" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+          <div class="capture-actions">
+            <button id="record" class="primary" disabled>Start dictation</button
+            ><button id="discard" class="secondary" hidden>
+              Discard recording</button
+            ><button id="retry-model" class="secondary" hidden>
+              Recheck installation</button
+            ><span class="limit">Up to 5 minutes · English</span>
+          </div>
+        </section>
+        <p id="status" class="status" role="status" aria-live="polite">
+          Starting LockedIn Flow…
+        </p>
+        <section class="transcript" aria-labelledby="transcript-heading">
+          <div class="transcript-toolbar">
+            <h2 id="transcript-heading">Your transcript</h2>
+            <span id="word-count">0 words</span>
+          </div>
+          <label class="sr-only" for="transcript"
+            >Transcript to review and copy</label
+          >
+          <textarea
+            id="transcript"
+            readonly
+            spellcheck="false"
+            placeholder="Your words will appear here. Nothing is copied or sent to another app until you choose Copy."
+          ></textarea>
+          <div class="transcript-footer">
+            <span>Review before you share.</span>
+            <div>
+              <button id="clear" class="quiet" disabled>Clear</button
+              ><button id="copy" class="copy" disabled>
+                Copy transcript <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </div>
+        </section>
+      </section>
+      <aside aria-label="Privacy and terminology">
+        <section class="boundary">
+          <p class="eyebrow">THE LOCAL BOUNDARY</p>
+          <h2>Your workspace.<br />Your control.</h2>
+          <ul>
+            <li><span aria-hidden="true">✓</span> No account or license key</li>
+            <li><span aria-hidden="true">✓</span> No audio uploads</li>
+            <li>
+              <span aria-hidden="true">✓</span> No external language model
+            </li>
+            <li><span aria-hidden="true">✓</span> No control of other apps</li>
+          </ul>
+          <p>
+            Recordings and transcripts stay in this session. Closing the app
+            clears them from application memory.
+          </p>
+          <p class="boundary-note">
+            Copying shares text with the system clipboard. Your clipboard
+            manager and destination app may sync it. For sensitive work, use an
+            approved local editor or local agent.
+          </p>
+        </section>
+        <details class="vocabulary">
+          <summary>
+            Workspace terminology <span id="term-count">0 terms</span>
+          </summary>
+          <p>
+            Correct the spellings you use. Add one replacement per line. These
+            corrections last for this session; they do not train a model.
+          </p>
+          <label for="vocabulary">Heard phrase = preferred spelling</label
+          ><textarea
+            id="vocabulary"
+            maxlength="16384"
+            spellcheck="false"
+            placeholder="cube control = kubectl&#10;fast api = FastAPI"
+          ></textarea
+          ><button id="apply-vocabulary" class="secondary" disabled>
+            Apply for this session
+          </button>
+        </details>
+        <div class="model-note">
+          <span class="model-dot" aria-hidden="true"></span>
+          <div>
+            <strong id="model-name">Local speech model</strong
+            ><span>Verified before loading · CPU inference</span>
+          </div>
+        </div>
+      </aside>
+    </main>
+    <footer class="app-footer">
+      <img src="brand.svg" alt="LockedIn Labs" width="164" height="25" /><span
+        >MIT open source · Desktop preview</span
+      >
+    </footer>
+  </body>
+</html>

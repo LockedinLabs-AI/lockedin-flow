@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <!-- The main install feature references this group to retain the fragment. -->
+    <ComponentGroup Id="LockedInInstallDirectoryPolicy" />
+    <!-- Tauri's AppSearch imports a remembered NSIS/MSI directory. Preserve
+         an explicit administrator destination instead of replacing it. -->
+    <Property Id="FLOW_REQUESTED_INSTALLDIR" Secure="yes" />
+    <SetProperty Id="FLOW_REQUESTED_INSTALLDIR"
+                 Action="CaptureLockedInInstallDir"
+                 Value="[INSTALLDIR]" Before="AppSearch" Sequence="both">
+      INSTALLDIR AND NOT Installed AND NOT REMOVE
+    </SetProperty>
+    <SetProperty Id="INSTALLDIR"
+                 Action="RestoreLockedInInstallDir"
+                 Value="[FLOW_REQUESTED_INSTALLDIR]" After="AppSearch" Sequence="both">
+      FLOW_REQUESTED_INSTALLDIR AND NOT Installed AND NOT REMOVE
+    </SetProperty>
+  </Fragment>
+</Wix>

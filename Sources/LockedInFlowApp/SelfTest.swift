@@ -10,14 +10,14 @@
     import VoiceCore
 
     /// Headless verification modes, invoked as:
-    ///   lockedin-flow-community --selftest-stt <audio.wav>   → transcribe a file, print transcript, exit
-    ///   lockedin-flow-community --selftest-stt-soak <audio.wav> <runs> → reuse one model process, exit
-    ///   lockedin-flow-community --selftest-stt-unified <audio.wav> → test the English model, exit
-    ///   lockedin-flow-community --selftest-vad <audio.wav>   → detect speech bounds, print metadata, exit
-    ///   lockedin-flow-community --selftest-live-capture <seconds> [voice-focus] → capture real mic, transcribe, exit
-    ///   lockedin-flow-community --selftest-capture-preflight [runs] → repeatedly verify the focused field without recording or writing
-    ///   lockedin-flow-community --insert-text "text" [--insert-diagnostics] [--insert-from-home] → insert into the current frontmost app, exit
-    ///   lockedin-flow-community --render-marketing-preview <directory> → render sanitized production UI, exit
+    ///   lockedin-flow --selftest-stt <audio.wav>   → transcribe a file, print transcript, exit
+    ///   lockedin-flow --selftest-stt-soak <audio.wav> <runs> → reuse one model process, exit
+    ///   lockedin-flow --selftest-stt-unified <audio.wav> → test the English model, exit
+    ///   lockedin-flow --selftest-vad <audio.wav>   → detect speech bounds, print metadata, exit
+    ///   lockedin-flow --selftest-live-capture <seconds> [voice-focus] → capture real mic, transcribe, exit
+    ///   lockedin-flow --selftest-capture-preflight [runs] → repeatedly verify the focused field without recording or writing
+    ///   lockedin-flow --insert-text "text" [--insert-diagnostics] [--insert-from-home] → insert into the current frontmost app, exit
+    ///   lockedin-flow --render-marketing-preview <directory> → render sanitized production UI, exit
     /// These let CI scripts and developers verify STT and insertion without a microphone.
     enum SelfTest {
         static func runIfRequested() {
@@ -567,6 +567,52 @@
                 to: directory.appendingPathComponent("lockedin-home-model-unavailable.png")
             )
 
+            for size in [CGSize(width: 600, height: 660), CGSize(width: 520, height: 480)] {
+                try writeHostedPNG(
+                    from: ModelSetupView()
+                        .environmentObject(state)
+                        .frame(width: size.width, height: size.height)
+                        .preferredColorScheme(.light),
+                    size: size,
+                    appearance: .aqua,
+                    to: directory.appendingPathComponent(
+                        "lockedin-model-setup-\(Int(size.width)).png")
+                )
+            }
+            try writeHostedPNG(
+                from: ModelSetupView(installation: .managedMac)
+                    .environmentObject(state)
+                    .frame(width: 600, height: 660)
+                    .preferredColorScheme(.dark),
+                size: CGSize(width: 600, height: 660),
+                appearance: .darkAqua,
+                to: directory.appendingPathComponent("lockedin-model-setup-managed.png")
+            )
+            try writeHostedPNG(
+                from: OnboardingView(initialPage: 2)
+                    .environmentObject(state)
+                    .frame(width: 560, height: 500),
+                size: CGSize(width: 560, height: 500),
+                appearance: .aqua,
+                to: directory.appendingPathComponent("lockedin-onboarding-model-setup.png")
+            )
+            state.modelReady = true
+            state.microphoneAuthorized = false
+            state.accessibilityTrusted = false
+            state.errorMessage = nil
+            state.modelStatus = "Ready"
+            try writeHostedPNG(
+                from: OnboardingView(initialPage: 2)
+                    .environmentObject(state)
+                    .frame(width: 560, height: 500),
+                size: CGSize(width: 560, height: 500),
+                appearance: .aqua,
+                to: directory.appendingPathComponent("lockedin-onboarding-permissions-needed.png")
+            )
+            state.modelReady = false
+            state.microphoneAuthorized = true
+            state.accessibilityTrusted = true
+
             state.errorMessage = nil
             state.modelStatus = "Verifying provisioned speech model…"
             state.pipelineState = .preparing
@@ -651,9 +697,11 @@
         private static func writeHostedPNG<Content: View>(
             from content: Content,
             size: CGSize,
+            appearance: NSAppearance.Name? = nil,
             to url: URL
         ) throws {
             let hostingView = NSHostingView(rootView: content)
+            if let appearance { hostingView.appearance = NSAppearance(named: appearance) }
             hostingView.frame = CGRect(origin: .zero, size: size)
             hostingView.layoutSubtreeIfNeeded()
             hostingView.displayIfNeeded()

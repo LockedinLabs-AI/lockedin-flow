@@ -59,7 +59,7 @@ needed for recognition: approved display names, acronyms, product terms, and
 explicit “heard as” aliases. Do not export email addresses, employee IDs,
 reporting relationships, phone numbers, or an entire corporate directory.
 
-The current Community workflow is an explicit, bounded CSV import encrypted in
+The current LockedIn Flow workflow is an explicit, bounded CSV import encrypted in
 the user's local store. A managed terminology service remains roadmap work and
 should add signed, versioned, anti-rollback packs; separate managed and personal
 rules; policy enforcement; last-known-good recovery; and key rotation.
@@ -98,7 +98,7 @@ HTTP listener.
 
 ## Commercial boundary
 
-The MIT-licensed Community edition is free for individual and commercial use.
+LockedIn Flow is free for individual and commercial use.
 Enterprise value should come from operating assurance rather than restricting
 the open-source license:
 

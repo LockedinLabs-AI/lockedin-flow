@@ -1,8 +1,9 @@
 import XCTest
 @testable import VoiceCore
 
-final class CommunityBuildIdentityTests: XCTestCase {
-    func testCommunityBuildUsesIsolatedRuntimeIdentity() {
+final class AppBuildIdentityTests: XCTestCase {
+    // Branding changes must not move existing encrypted data or model caches.
+    func testRuntimeIdentityPreservesExistingStorage() {
         XCTAssertEqual(AppBuildIdentity.supportDirectoryName, "LockedInFlowCommunity")
         XCTAssertEqual(AppBuildIdentity.keychainService, "ai.lockedin.flow.community")
         XCTAssertEqual(AppBuildIdentity.logSubsystem, "ai.lockedin.flow.community")

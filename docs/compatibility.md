@@ -7,7 +7,7 @@ available and enabled.
 
 ## Current publication status
 
-No application is listed as accepted for the v0.4.17 Community candidate yet.
+No application is listed as accepted for the v0.4.17 LockedIn Flow candidate yet.
 The source test suite covers capture recovery, delivery-time target resolution,
 secure-field refusal, at-most-once insertion policy, local storage, terminology,
 cleanup, and model integrity, but source tests are not a substitute for the
@@ -34,15 +34,41 @@ counted as success.
 
 ## Known scope
 
-- macOS on Apple silicon is the only current product target.
-- Windows and Linux are not supported Community release platforms.
+- The native Mac candidate targets Apple silicon. A separate Windows x64 and
+  Linux x64 source preview is described in the [desktop guide](../desktop/README.md).
+  Neither preview packaging nor a passing hosted build establishes a supported
+  production release; use each platform's installed acceptance record.
 - An external destination application may sync or transmit inserted text under
   its own policy; LockedIn Flow cannot change that application's boundary.
-- A local transcript inserted into a cloud AI client remains local only until
-  the user submits it to that provider.
-- Ordinary dictation inserts into the current safe field in the destination
+- A destination app can sync draft text before the user presses Submit. Local
+  speech recognition does not make a cloud AI client an offline/private AI.
+- The default workflow records into LockedIn Flow for review and explicit Copy;
+  it does not depend on identifying another application's input field.
+- Optional automatic typing inserts into the current safe field in the destination
   application at delivery. Keep the intended editor focused until insertion
   finishes; changing fields within that application changes the destination.
+
+## Acceptance record requirements
+
+Use synthetic speech and label each result **passed**, **failed**, or **not
+tested**. Record the source revision, final artifact SHA-256, model hashes,
+OS/app versions, device/microphone, date, test procedure, repetitions, and
+observed outcome. Remove account names, device identifiers, paths, and dictated
+private content before publishing a summary.
+
+For each supported configuration, cover clean offline first launch with
+pre-staged models, normal short/long dictation, cancel/retry, device disconnect,
+sleep/wake, and a concurrent meeting/transcription application. Add secure
+fields, editor replacement, focus movement, and clipboard contention when
+automatic typing is enabled. Include keyboard-only and platform screen-reader
+use of setup, recording, transcript review, Copy, errors, and recovery.
+
+Set the repetition count and latency/resource/accuracy acceptance budgets before
+running the pilot, based on its target hardware and workload. Record every
+attempt, including safe refusals and interruptions. Any lost completed text,
+duplicate delivery, wrong-target insertion, unexplained network activity, or
+unrecoverable crash rejects the affected configuration until corrected and
+retested. A bounded successful test run does not imply a zero-failure guarantee.
 
 See [Validation evidence](validation.md) for the hosted source-gate status and
 the installed-product evidence that remains pending.

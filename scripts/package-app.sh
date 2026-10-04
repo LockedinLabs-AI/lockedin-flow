@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build an ad-hoc signed local app bundle for source evaluation.
+# Build the ad-hoc signed LockedIn Flow bundle for source evaluation.
 # This is not the official Developer ID signed and notarized release path.
 set -euo pipefail
 
@@ -24,28 +24,28 @@ if [ -n "$(git status --porcelain --untracked-files=all)" ]; then
 fi
 
 echo "==> Building release executable from resolved dependencies"
-swift build -c release --product lockedin-flow-community --force-resolved-versions
+swift build -c release --product lockedin-flow --force-resolved-versions
 BIN_DIR="$(swift build -c release --show-bin-path)"
 
-APP="$OUTPUT_DIR/LockedIn Flow Community.app"
-EXECUTABLE="$APP/Contents/MacOS/LockedInFlowCommunity"
+APP="$OUTPUT_DIR/LockedIn Flow.app"
+EXECUTABLE="$APP/Contents/MacOS/LockedInFlow"
 mkdir -p "$OUTPUT_DIR"
 rm -rf -- "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
-cp "$BIN_DIR/lockedin-flow-community" "$EXECUTABLE"
+cp "$BIN_DIR/lockedin-flow" "$EXECUTABLE"
 cp "$ROOT/Info.plist" "$APP/Contents/Info.plist"
 PLIST="$APP/Contents/Info.plist"
 test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$PLIST")" \
     = "ai.lockedin.flow.community"
 test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleName" "$PLIST")" \
-    = "LockedIn Flow Community"
+    = "LockedIn Flow"
 test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" "$PLIST")" \
-    = "LockedIn Flow Community"
+    = "LockedIn Flow"
 test "$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$PLIST")" \
-    = "LockedInFlowCommunity"
+    = "LockedInFlow"
 for updater_key in SUEnableAutomaticChecks SUFeedURL SUPublicEDKey; do
     if /usr/libexec/PlistBuddy -c "Print :$updater_key" "$PLIST" >/dev/null 2>&1; then
-        echo "ERROR: Community bundle must not contain $updater_key." >&2
+        echo "ERROR: LockedIn Flow bundle must not contain $updater_key." >&2
         exit 1
     fi
 done

@@ -1,0 +1,29 @@
+name: Public metadata
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-metadata-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  privacy:
+    name: Pull request privacy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+      - name: Test the metadata policy
+        run: node --test Tests/ToolingTests/public-metadata.test.mjs
+      - name: Check title and description without logging their contents
+        run: node scripts/check-public-metadata.mjs < "$GITHUB_EVENT_PATH"

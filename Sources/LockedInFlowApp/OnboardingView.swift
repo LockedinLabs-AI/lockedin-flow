@@ -1,19 +1,33 @@
 import SwiftUI
+import VoiceCore
 
 struct OnboardingView: View {
     @EnvironmentObject var state: AppState
-    @Environment(\.dismiss) private var dismiss
-    @State private var page = 0
+    @State private var page: Int
     @State private var permissionTimer: Timer?
+
+    init(initialPage: Int = 0) {
+        _page = State(initialValue: min(2, max(0, initialPage)))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            TabView(selection: $page) {
-                welcomePage.tag(0)
-                permissionsPage.tag(1)
-                modelPage.tag(2)
+            Picker("Setup step", selection: $page) {
+                Text("Welcome").tag(0)
+                Text("Permissions").tag(1)
+                Text("Speech model").tag(2)
             }
-            .tabViewStyle(.automatic)
+            .pickerStyle(.segmented)
+            .padding(16)
+
+            Group {
+                switch page {
+                case 1: permissionsPage
+                case 2: modelPage
+                default: welcomePage
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
 
@@ -26,18 +40,39 @@ struct OnboardingView: View {
                     Button("Continue") { page += 1 }
                         .keyboardShortcut(.defaultAction)
                 } else {
-                    Button("Start Dictating") {
-                        state.completeOnboarding()
-                        dismiss()
-                    }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(!state.canDictate)
+                    completionAction
                 }
             }
             .padding(16)
         }
-        .onAppear { startPermissionPolling() }
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear {
+            if !state.isMarketingPreview { startPermissionPolling() }
+        }
         .onDisappear { permissionTimer?.invalidate() }
+    }
+
+    @ViewBuilder
+    private var completionAction: some View {
+        switch state.firstDictationReadiness.nextAction {
+        case .waitForModel:
+            Button("Checking models…") {}
+                .disabled(true)
+        case .setUpModel:
+            Button("Set up speech models") {
+                WindowOpener.shared.showModelSetup(state: state)
+            }
+            .keyboardShortcut(.defaultAction)
+            .accessibilityHint("Opens local setup instructions; does not download or record")
+        case .reviewPermissions:
+            Button("Review permissions") { page = 1 }
+                .keyboardShortcut(.defaultAction)
+                .accessibilityHint("Returns to the microphone and text insertion permissions")
+        case .openDictation:
+            Button("Open LockedIn Flow") { state.completeOnboarding() }
+                .keyboardShortcut(.defaultAction)
+                .accessibilityHint("Completes setup and opens the app without starting a recording")
+        }
     }
 
     private var welcomePage: some View {
@@ -61,7 +96,7 @@ struct OnboardingView: View {
                     systemImage: "memorychip")
             }
             .font(.callout)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.primary)
             Spacer()
         }
         .padding()
@@ -69,7 +104,7 @@ struct OnboardingView: View {
 
     private var permissionsPage: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Two permissions are required.")
+            Text("Microphone access for local transcription.")
                 .font(.title3)
             permissionRow(
                 title: "Microphone",
@@ -77,17 +112,31 @@ struct OnboardingView: View {
                 granted: state.microphoneAuthorized,
                 action: { state.requestMicrophoneAccess() }
             )
-            permissionRow(
-                title: "Accessibility",
-                detail: "Inserts text at your cursor and blocks password fields.",
-                granted: state.accessibilityTrusted,
-                action: { state.requestAccessibilityAccess() }
-            )
             Text(
-                "Accessibility identifies the focused editor, refuses secure fields, and inserts text. If you enable Learn from edits, LockedIn Flow briefly re-reads only the exact field it just wrote so it can learn a correction; that value stays in memory on this Mac."
+                "Your transcript appears in LockedIn Flow. Use Copy and paste it yourself. No Accessibility access or control of other apps is required."
+            )
+            .font(.callout)
+            .foregroundStyle(.primary)
+            Divider()
+            Text("Automatic typing is optional")
+                .font(.headline)
+            Text(
+                "To type directly into other apps, you can opt in later in Settings → Permissions. macOS requires broad Accessibility access for that feature. It is off by default."
             )
             .font(.caption)
-            .foregroundStyle(.secondary)
+            if state.automaticInsertionEnabled {
+                Text(
+                    state.accessibilityTrusted
+                        ? "Automatic typing is enabled."
+                        : "Automatic typing is selected but its permission is missing.")
+                HStack {
+                    Button("Use in-app transcription") { state.useInAppTranscription() }
+                    if !state.accessibilityTrusted {
+                        Button("Review automatic typing…") { state.requestAccessibilityAccess() }
+                    }
+                }
+                .disabled(!state.canChangeTranscriptPolicy)
+            }
             Spacer()
         }
         .padding()
@@ -102,15 +151,20 @@ struct OnboardingView: View {
                     granted ? Color(nsColor: .systemGreen) : Color(nsColor: .systemOrange)
                 )
                 .font(.title3)
+                .accessibilityHidden(true)
             VStack(alignment: .leading) {
                 Text(title).bold()
                 Text(detail)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
             Spacer()
             if !granted {
                 Button("Grant", action: action)
+                    .accessibilityLabel("Allow \(title) access")
+            } else {
+                Text("Allowed")
+                    .font(.caption)
             }
         }
     }
@@ -126,35 +180,36 @@ struct OnboardingView: View {
                     .font(.title3)
                 Text(state.modelStatus)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(activationInstructions)
-                    .multilineTextAlignment(.center)
-                    .font(.callout)
+                    .foregroundStyle(.primary)
+                Text(
+                    state.firstDictationReadiness.nextAction == .reviewPermissions
+                        ? "Your model is ready. Review the remaining permission for your selected dictation mode."
+                        : activationInstructions
+                )
+                .multilineTextAlignment(.center)
+                .font(.callout)
             } else {
                 if state.modelSwitchInProgress {
                     ProgressView()
                         .controlSize(.large)
                     Text(state.modelStatus)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                     Text("Checking the provisioned model against the reviewed manifest…")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.primary)
                 } else {
                     Image(systemName: "externaldrive.badge.exclamationmark")
                         .font(.system(size: 40))
                         .foregroundStyle(Color(nsColor: .systemOrange))
                     Text(state.errorMessage ?? state.modelStatus)
                         .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                     Text(
-                        "LockedIn Flow does not download models at runtime. Install the reviewed offline model bundle, or ask your administrator to provision it, then verify again."
+                        "Open the setup guide below for source-build or managed-Mac instructions. Nothing is downloaded automatically."
                     )
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    Button("Verify Model") {
-                        Task { await state.prepareModel() }
-                    }
+                    .foregroundStyle(.primary)
                 }
             }
             Spacer()
@@ -163,6 +218,10 @@ struct OnboardingView: View {
     }
 
     private var activationInstructions: String {
+        if !state.automaticInsertionEnabled {
+            return
+                "Use \(state.activationHint) to dictate. Your transcript appears in LockedIn Flow; choose Copy when you want to use it elsewhere. No Accessibility access is needed."
+        }
         if state.activationTrigger == .keyboard, state.activationMode == .hold {
             return
                 "Hold \(state.activationHint) anywhere while you speak, then release — text lands at your cursor."

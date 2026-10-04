@@ -84,7 +84,7 @@ struct MenuBarView: View {
                     Circle()
                         .fill(FlowBrand.success)
                         .frame(width: 6, height: 6)
-                    Text("Community")
+                    Text("MIT")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(FlowBrand.secondaryText)
                 }
@@ -204,7 +204,7 @@ struct MenuBarView: View {
         case .requestMicrophone:
             return "Allow microphone access"
         case .requestAccessibility:
-            return "Allow text insertion"
+            return "Review automatic typing"
         case .working:
             return state.pipelineIsMeeting ? "Finishing meeting…" : "Finishing dictation…"
         case .start:
@@ -218,13 +218,16 @@ struct MenuBarView: View {
         case .finish:
             return state.pipelineIsMeeting
                 ? "Stops recording and prepares meeting notes"
-                : "Stops recording and inserts the dictated text"
+                : state.automaticInsertionEnabled
+                    ? "Stops recording and inserts the dictated text"
+                    : "Stops recording and shows the transcript in LockedIn Flow"
         case .retry: return "Retries the recording held in memory for this session"
         case .preparingModel:
             return "Dictation will be available after the provisioned model is verified"
         case .retryModel: return "Verifies the provisioned on-device speech model again"
         case .requestMicrophone: return "Requests macOS microphone permission"
-        case .requestAccessibility: return "Requests permission to place text at the cursor"
+        case .requestAccessibility:
+            return "Explains optional Accessibility access before requesting it"
         case .working:
             return state.pipelineIsMeeting
                 ? "Meeting notes are being prepared locally" : "Dictation is being finished locally"
@@ -263,7 +266,15 @@ struct MenuBarView: View {
                 label: "Model",
                 value: modelStatusValue,
                 ok: state.modelReady
-            )
+            ) {
+                if !state.modelReady && !state.modelSwitchInProgress {
+                    Button("Setup guide") {
+                        WindowOpener.shared.showModelSetup(state: state)
+                    }
+                    .controlSize(.mini)
+                    .accessibilityLabel("Open speech model setup instructions")
+                }
+            }
             StatusRow(
                 label: "Mic",
                 value: state.microphoneAuthorized ? "Allowed" : "Needed",
@@ -277,15 +288,16 @@ struct MenuBarView: View {
                 }
             }
             StatusRow(
-                label: "Access",
-                value: state.accessibilityTrusted ? "Allowed" : "Needed",
-                ok: state.accessibilityTrusted
+                label: "Output",
+                value: state.automaticInsertionEnabled ? "Automatic typing" : "In-app transcript",
+                ok: !state.automaticInsertionEnabled || state.accessibilityTrusted
             ) {
-                if !state.accessibilityTrusted {
-                    Button("Grant") {
-                        state.requestAccessibilityAccess()
+                if state.automaticInsertionEnabled {
+                    Button("Use in-app") {
+                        state.useInAppTranscription()
                     }
                     .controlSize(.mini)
+                    .disabled(!state.canChangeTranscriptPolicy)
                 }
             }
             StatusRow(label: "Profile", value: state.effectiveProfile.name, ok: true)
@@ -472,7 +484,7 @@ struct MenuBarView: View {
         let pasteboard = NSPasteboard.general
         pasteboard.prepareForNewContents(with: .currentHostOnly)
         pasteboard.setString(
-            "https://github.com/LockedinLabs-AI/lockedin-flow-community",
+            "https://github.com/LockedinLabs-AI/lockedin-flow",
             forType: .string
         )
         state.statusMessage = "Project link copied"

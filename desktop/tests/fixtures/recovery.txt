@@ -1,0 +1,1 @@
+The microphone changed during recording. Keep the words that were already captured.

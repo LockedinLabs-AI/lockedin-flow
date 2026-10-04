@@ -88,6 +88,10 @@ final class AppState: ObservableObject {
     // Permissions
     @Published var microphoneAuthorized = false
     @Published var accessibilityTrusted = false
+    @Published private(set) var deliveryMode: DictationDeliveryMode {
+        didSet { UserDefaults.standard.set(deliveryMode.rawValue, forKey: "dictationDeliveryMode") }
+    }
+    var automaticInsertionEnabled: Bool { deliveryMode.requiresAccessibility }
     @Published private(set) var shortcutMigrationNoticePending: Bool
 
     // Context
@@ -218,6 +222,11 @@ final class AppState: ObservableObject {
     ) {
         isMarketingPreview = marketingPreview
         let defaults = UserDefaults.standard
+        _deliveryMode = Published(
+            initialValue: marketingPreview
+                ? .inApp
+                : DictationDeliveryMode(
+                    storedPreference: defaults.string(forKey: "dictationDeliveryMode")))
         // Initialize underlying Published storage directly: assigning to an observed
         // property in init is treated as a use of `self` before full initialization.
         let requestedProfileOverrideID =
@@ -363,7 +372,10 @@ final class AppState: ObservableObject {
     }
 
     var canDictate: Bool {
-        modelReady && microphoneAuthorized && accessibilityTrusted
+        modelReady
+            && deliveryMode.canRecord(
+                microphoneAuthorized: microphoneAuthorized,
+                accessibilityTrusted: accessibilityTrusted)
     }
 
     var canStartDictation: Bool {
@@ -384,7 +396,7 @@ final class AppState: ObservableObject {
         }
         if canRetryFailedDictation { return .retry }
         if !microphoneAuthorized { return .requestMicrophone }
-        if !accessibilityTrusted { return .requestAccessibility }
+        if automaticInsertionEnabled && !accessibilityTrusted { return .requestAccessibility }
         return .start
     }
 
@@ -502,21 +514,23 @@ final class AppState: ObservableObject {
                 let app = note.userInfo?[NSWorkspace.applicationUserInfoKey]
                     as? NSRunningApplication
             else { return }
-            let isSelf = app.processIdentifier == ProcessInfo.processInfo.processIdentifier
-            FrontmostTracker.shared.noteActivation(
-                pid: app.processIdentifier,
-                bundleID: app.bundleIdentifier,
-                appName: app.localizedName,
-                isSelf: isSelf
-            )
             Task { @MainActor in
-                self?.updateContext()
+                guard let self, self.automaticInsertionEnabled else { return }
+                let isSelf = app.processIdentifier == ProcessInfo.processInfo.processIdentifier
+                FrontmostTracker.shared.noteActivation(
+                    pid: app.processIdentifier,
+                    bundleID: app.bundleIdentifier,
+                    appName: app.localizedName,
+                    isSelf: isSelf
+                )
+                self.updateContext()
             }
         }
     }
 
     private func captureCurrentFrontmost() {
-        guard let app = NSWorkspace.shared.frontmostApplication,
+        guard automaticInsertionEnabled,
+            let app = NSWorkspace.shared.frontmostApplication,
             app.processIdentifier != ProcessInfo.processInfo.processIdentifier
         else { return }
         FrontmostTracker.shared.noteActivation(
@@ -529,6 +543,11 @@ final class AppState: ObservableObject {
     }
 
     func updateContext() {
+        guard automaticInsertionEnabled else {
+            targetAppName = nil
+            activeProfile = .general
+            return
+        }
         targetAppName = FrontmostTracker.shared.targetAppName()
         activeProfile = AppProfile.profile(forBundleID: FrontmostTracker.shared.targetBundleID())
     }
@@ -597,8 +616,42 @@ final class AppState: ObservableObject {
     }
 
     func requestAccessibilityAccess() {
+        guard !isMarketingPreview, canChangeTranscriptPolicy else { return }
+        let bundle = Bundle.main
+        guard
+            AccessibilityRequestIdentity.permitsPrompt(
+                bundleIdentifier: bundle.bundleIdentifier,
+                bundleName: bundle.object(forInfoDictionaryKey: "CFBundleName") as? String,
+                displayName: bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String,
+                executableName: bundle.object(forInfoDictionaryKey: "CFBundleExecutable")
+                    as? String,
+                runningExecutableName: bundle.executableURL?.lastPathComponent,
+                isApplicationBundle: bundle.bundleURL.pathExtension == "app"
+            )
+        else {
+            errorMessage =
+                "Automatic insertion is available only from the packaged LockedIn Flow app. This build will not request Accessibility access. In-app transcription remains available."
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Enable automatic typing in other apps?"
+        alert.informativeText =
+            "This is optional. Transcribe in LockedIn Flow and use Copy without Accessibility access.\n\nAutomatic typing uses macOS Accessibility permission to inspect the focused editor and insert text. macOS describes this broad permission as control of your computer; it is not limited to typing. Grant it only if you trust LockedIn Flow and your organization permits it.\n\nThe next macOS request must identify LockedIn Flow. Decline a request with any other name."
+        alert.addButton(withTitle: "Continue to macOS permission")
+        alert.addButton(withTitle: "Keep in-app transcription")
+        alert.window.title = "LockedIn Flow"
+        guard alert.runModal() == .alertFirstButtonReturn, canChangeTranscriptPolicy else { return }
+        deliveryMode = .automaticInsertion
         _ = TextInserter.isTrusted(prompt: true)
         refreshPermissions()
+        updateContext()
+    }
+
+    func useInAppTranscription() {
+        guard canChangeTranscriptPolicy else { return }
+        deliveryMode = .inApp
+        updateContext()
+        statusMessage = "Transcripts stay in LockedIn Flow until you choose Copy."
     }
 
     func openMicrophoneSettings() {
@@ -873,8 +926,21 @@ final class AppState: ObservableObject {
         WindowOpener.shared.showOnboarding(state: self)
     }
 
+    var firstDictationReadiness: FirstDictationReadiness {
+        FirstDictationReadiness(
+            modelReady: modelReady,
+            modelChecking: modelSwitchInProgress || pipelineState == .preparing,
+            microphoneAuthorized: microphoneAuthorized,
+            accessibilityTrusted: accessibilityTrusted,
+            deliveryMode: deliveryMode
+        )
+    }
+
     func completeOnboarding() {
+        guard firstDictationReadiness.canFinish, !isMarketingPreview else { return }
         UserDefaults.standard.set(true, forKey: "onboardingCompleted")
+        WindowOpener.shared.closeOnboarding()
+        showHomeWindow()
     }
 
     func quit() {

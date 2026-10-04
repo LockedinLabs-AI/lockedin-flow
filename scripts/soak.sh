@@ -21,8 +21,8 @@ if ! [[ "$MAX_RSS_GROWTH_KB" =~ ^[0-9]+$ ]]; then
 fi
 
 echo "==> Building diagnostic executable (debug-only commands)"
-swift build -c debug --product lockedin-flow-community >/dev/null
-BIN="$(swift build -c debug --show-bin-path)/lockedin-flow-community"
+swift build -c debug --product lockedin-flow >/dev/null
+BIN="$(swift build -c debug --show-bin-path)/lockedin-flow"
 
 say -o "$WORK/test.aiff" "the quick brown fox jumps over the lazy dog"
 afconvert -f WAVE -d LEI16@16000 -c 1 "$WORK/test.aiff" "$WORK/test.wav"

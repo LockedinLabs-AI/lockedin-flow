@@ -68,7 +68,7 @@ struct HomeView: View {
     private var journeyDestination: FlowJourneyDestination {
         state.pipelineIsMeeting || (state.canRetryFailedDictation && state.failedRetryIsMeeting)
             ? .notes
-            : .cursor
+            : state.automaticInsertionEnabled ? .cursor : .transcript
     }
 
     private var journeyAccessibilityStatus: String? {
@@ -77,9 +77,13 @@ struct HomeView: View {
                 ? "Meeting recording held in memory for this session"
                 : "Dictation recording held in memory for this session"
         }
-        if !state.modelReady { return "Verifying the provisioned speech model on this Mac" }
+        if !state.modelReady {
+            return state.primaryDictationAction == .retryModel
+                ? "Speech model setup needs attention"
+                : "Verifying the provisioned speech model on this Mac"
+        }
         if !state.microphoneAuthorized { return "Microphone access is required" }
-        if !state.accessibilityTrusted {
+        if state.automaticInsertionEnabled && !state.accessibilityTrusted {
             return "Accessibility permission is required for text insertion"
         }
         if state.pipelineState == .failed { return "Dictation needs attention" }
@@ -450,11 +454,15 @@ struct HomeView: View {
             .help(
                 state.pipelineIsMeeting
                     ? "Click the recording area to stop and save meeting notes"
-                    : "Click the listening area to stop and insert"
+                    : state.automaticInsertionEnabled
+                        ? "Click the listening area to stop and insert"
+                        : "Click the listening area to stop and view your transcript"
             )
             .accessibilityLabel(
                 state.pipelineIsMeeting
-                    ? "Stop meeting and save notes" : "Stop dictation and insert text"
+                    ? "Stop meeting and save notes"
+                    : state.automaticInsertionEnabled
+                        ? "Stop dictation and insert text" : "Stop dictation and show transcript"
             )
             .accessibilityHint("The entire listening area is clickable")
         }
@@ -508,14 +516,15 @@ struct HomeView: View {
 
             Spacer(minLength: 14)
 
-            Button("Verify Again") {
-                state.performPrimaryDictationAction()
+            Button("Set up models") {
+                WindowOpener.shared.showModelSetup(state: state)
             }
             .buttonStyle(.borderedProminent)
             .tint(FlowBrand.primaryText)
             .foregroundStyle(FlowBrand.background)
             .controlSize(.regular)
-            .accessibilityHint("Verifies the provisioned on-device speech model again")
+            .accessibilityHint(
+                "Opens local model setup and recheck instructions without downloading or recording")
         }
         .padding(.horizontal, 22)
     }
@@ -674,7 +683,8 @@ struct HomeView: View {
                                     completion: completion
                                 )
                             },
-                            reinsertBlocked: state.pendingReinsertInspection != nil,
+                            reinsertBlocked: state.pendingReinsertInspection != nil
+                                || !state.automaticInsertionEnabled,
                             ownedInspection: state.pendingReinsertInspection.flatMap {
                                 $0.sourceID == entry.id ? $0 : nil
                             }
@@ -724,7 +734,9 @@ struct HomeView: View {
     private var readinessTitle: String {
         if !state.modelReady { return "Verifying your speech model" }
         if !state.microphoneAuthorized { return "Allow microphone access" }
-        if !state.accessibilityTrusted { return "Allow text insertion" }
+        if state.automaticInsertionEnabled && !state.accessibilityTrusted {
+            return "Review automatic typing"
+        }
         if state.pipelineState == .failed { return "Ready to try again" }
         if state.pipelineState == .done { return "Ready for your next thought" }
         return "Start dictation"
@@ -733,10 +745,14 @@ struct HomeView: View {
     private var readinessDetail: String {
         if !state.modelReady { return state.modelStatus }
         if !state.microphoneAuthorized { return "LockedIn Flow needs the microphone to hear you." }
-        if !state.accessibilityTrusted {
-            return "Accessibility permission places text at your cursor."
+        if state.automaticInsertionEnabled && !state.accessibilityTrusted {
+            return
+                "Use in-app transcription without Accessibility, or review optional automatic typing."
         }
         if state.pipelineState == .failed, let error = state.errorMessage { return error }
+        if !state.automaticInsertionEnabled {
+            return "Transcribe here, then choose Copy. No Accessibility access required."
+        }
         let cleanup = state.cleanupEnabled ? "polished locally" : "transcribed directly"
         return "\(state.effectiveProfile.name) profile · \(cleanup)"
     }
@@ -744,7 +760,7 @@ struct HomeView: View {
     private var readySymbol: String {
         if state.pipelineState == .failed { return "arrow.clockwise" }
         if !state.modelReady { return "checkmark.shield" }
-        if !state.microphoneAuthorized || !state.accessibilityTrusted { return "exclamationmark" }
+        if !state.canDictate { return "exclamationmark" }
         return "mic.fill"
     }
 

@@ -173,6 +173,7 @@ enum FlowJourneyPhase: Equatable {
 enum FlowJourneyDestination {
     case cursor
     case notes
+    case transcript
 }
 
 struct FlowPipelineRail: View {
@@ -270,7 +271,9 @@ struct FlowPipelineRail: View {
         switch stage {
         case .microphone: return "Mic"
         case .onDevice: return "On device"
-        case .cursor: return destination == .notes ? "Notes" : "Cursor"
+        case .cursor:
+            return destination == .notes
+                ? "Notes" : destination == .transcript ? "Transcript" : "Cursor"
         }
     }
 
@@ -278,7 +281,9 @@ struct FlowPipelineRail: View {
         switch stage {
         case .microphone: return "mic.fill"
         case .onDevice: return "cpu"
-        case .cursor: return destination == .notes ? "note.text" : "cursorarrow"
+        case .cursor:
+            return destination == .notes
+                ? "note.text" : destination == .transcript ? "text.alignleft" : "cursorarrow"
         }
     }
 
@@ -330,9 +335,15 @@ struct FlowPipelineRail: View {
         case .captured: return "Recording held in memory for this session"
         case .onDevice: return "Processing on this Mac"
         case .cursor:
-            return destination == .notes ? "Saving meeting notes" : "Placing text at the cursor"
+            return destination == .notes
+                ? "Saving meeting notes"
+                : destination == .transcript
+                    ? "Preparing in-app transcript" : "Placing text at the cursor"
         case .complete:
-            return destination == .notes ? "Meeting saved in notes" : "Text delivered at the cursor"
+            return destination == .notes
+                ? "Meeting saved in notes"
+                : destination == .transcript
+                    ? "Transcript ready in LockedIn Flow" : "Text delivered at the cursor"
         }
     }
 }
